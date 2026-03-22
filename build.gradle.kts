@@ -1,0 +1,67 @@
+plugins {
+    kotlin("jvm") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
+    application
+}
+
+group = "net.nebupookins.sellyourshit"
+version = "1.0-SNAPSHOT"
+
+kotlin {
+    jvmToolchain(26)
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23)
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    sourceCompatibility = "23"
+    targetCompatibility = "23"
+}
+
+repositories {
+    mavenCentral()
+}
+
+val ktorVersion = "3.1.2"
+
+dependencies {
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
+    implementation("ch.qos.logback:logback-classic:1.5.18")
+    implementation("com.charleskorn.kaml:kaml:0.72.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+
+    testImplementation(kotlin("test"))
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+}
+
+application {
+    mainClass.set("net.nebupookins.sellyourshit.ApplicationKt")
+}
+
+// Build frontend and copy output into static resources
+tasks.register<Exec>("npmBuild") {
+    workingDir = file("frontend")
+    commandLine("npm", "run", "build")
+    inputs.dir("frontend/src")
+    inputs.file("frontend/package.json")
+    inputs.file("frontend/vite.config.ts")
+    outputs.dir("frontend/dist")
+}
+
+tasks.register<Copy>("copyFrontend") {
+    dependsOn("npmBuild")
+    from("frontend/dist")
+    into("src/main/resources/static")
+}
+
+tasks.named("processResources") {
+    dependsOn("copyFrontend")
+}
+
+tasks.test {
+    useJUnitPlatform()
+}

@@ -4,29 +4,16 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 0 — Skeleton: "Hello World" full-stack
+## ~~Slice 0 — Skeleton: "Hello World" full-stack~~ ✅ DONE
 
 **Goal:** Prove the build pipeline works end-to-end before writing any real logic.
 
-### Backend
-- Init Gradle project with Kotlin + Ktor dependencies (ktor-server-netty, ktor-server-content-negotiation, ktor-serialization-kotlinx-json, kaml).
-- Single `Application.kt` that starts on port 45966.
-- One health-check route: `GET /api/v1/health` → `{"status":"ok"}`.
-- Serve static files from `src/main/resources/static/` (React build output goes here later).
+**Completed:** Gradle + Ktor (Netty) backend, React/Vite/TypeScript frontend, `npmBuild` + `copyFrontend` Gradle tasks, `/api/v1/health` route, static file serving. Smoke-tested: health endpoint returns `{"status":"ok"}`, `/` serves the React HTML shell.
 
-### Frontend
-- Init React app (Vite + TypeScript) in `frontend/`.
-- Single `App.tsx` that renders "Hello World".
-- `vite.config.ts` proxies `/api` to `localhost:45966` for dev.
-- Add a Gradle task `npmBuild` that runs `npm run build` and copies output to `src/main/resources/static/`.
-
-### Test
-```bash
-./gradlew run        # backend starts
-cd frontend && npm run dev   # React dev server with proxy
-# visit http://localhost:5173 → "Hello World"
-# GET http://localhost:45966/api/v1/health → {"status":"ok"}
-```
+**Notes:**
+- Package: `net.nebupookins.sellyourshit`
+- JDK 26 installed; Kotlin compiled with `jvmTarget = JVM_23` via toolchain to avoid mismatch.
+- Netty emits `sun.misc.Unsafe` warnings on JDK 26 — harmless, ignore for now.
 
 ---
 
