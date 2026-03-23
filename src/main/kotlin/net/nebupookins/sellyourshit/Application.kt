@@ -15,11 +15,13 @@ fun main() {
     val settings = loadConfig(dataDir)
 
     embeddedServer(Netty, port = settings.config.port) {
-        module(settings)
+        module(settings, dataDir)
     }.start(wait = true)
 }
 
-fun Application.module(settings: AppSettings) {
+fun Application.module(settings: AppSettings, dataDir: File) {
+    val itemRepo = ItemRepository(dataDir)
+
     install(ContentNegotiation) {
         json(Json { prettyPrint = true })
     }
@@ -36,6 +38,8 @@ fun Application.module(settings: AppSettings) {
         get("/api/v1/config/decay") {
             call.respond(settings.config.decay)
         }
+
+        itemRoutes(itemRepo)
 
         // Serve frontend static files (must be last)
         staticFiles()
