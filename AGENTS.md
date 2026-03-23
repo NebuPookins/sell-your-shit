@@ -30,29 +30,16 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 2 — Item CRUD (no photos, no LLM)
+## ~~Slice 2 — Item CRUD (no photos, no LLM)~~ ✅ DONE
 
 **Goal:** Create, list, and view items stored as YAML files. No photos or LLM yet.
 
-### Backend
-- Define `Item` and `Listing` data classes matching the YAML schema.
-- `ItemRepository`: reads/writes `data/items/{id}.yaml` using write-to-temp-then-rename.
-- `POST /api/v1/items` — accept JSON `{rawDescription, minimumPrice}`, create item with no listings, return item.
-- `GET /api/v1/items` — list all items (read all files in `data/items/`).
-- `GET /api/v1/items/{id}` — return single item with listings.
-- `PATCH /api/v1/items/{id}` — update `rawDescription` or `minimumPrice`.
-- `DELETE /api/v1/items/{id}` — add `archivedAt` field (soft delete).
+**Completed:** `ItemModels.kt` defines `Item`, `Listing`, `ListingStatus`, `PriceHistoryEntry`, `CreateItemRequest`, `PatchItemRequest`. `ItemRepository.kt` reads/writes `data/items/{id}.yaml` using write-to-temp-then-rename; uses kaml for YAML. `ItemRoutes.kt` registers POST/GET/GET:id/PATCH/DELETE under `/api/v1/items`. `Application.kt` updated to pass `dataDir` to `module()` and wire `ItemRepository`. Frontend: `react-router-dom` installed; `BrowserRouter` wraps app; `App.tsx` uses `<Routes>`; `ItemList`, `NewItem`, `ItemDetail` pages created; `types.ts` defines TypeScript interfaces.
 
-### Frontend
-- Add React Router; create routes: `/`, `/items/new`, `/items/:id`.
-- `/items/new` — simple form: description textarea + minimum price input → POST `/api/v1/items` → redirect to `/items/:id`.
-- `/items/:id` — fetch and display raw item JSON (pretty-printed) for now.
-- `/` — fetch and display item list as a simple table (title = first 60 chars of description, status counts).
-
-### Test
-- Create an item via the form, verify the YAML file appears in `data/items/`.
-- Refresh the list page; item appears.
-- Edit description via PATCH (can curl for now).
+**Notes:**
+- Item YAML uses camelCase keys (no kebab-case) so same model class works for both YAML storage and JSON API.
+- `GET /api/v1/items` returns all items including archived; frontend filters `archivedAt != null` client-side.
+- `/items/:id` shows pretty-printed raw JSON for now (upgraded in Slice 5).
 
 ---
 
