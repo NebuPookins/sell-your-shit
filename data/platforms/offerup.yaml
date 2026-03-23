@@ -1,0 +1,18 @@
+id: OFFERUP
+label: "OfferUp"
+fields:
+  - name: title
+    label: "Title"
+    type: text
+    max-length: 50
+  - name: price
+    label: "Price"
+    type: number
+  - name: condition
+    label: "Condition"
+    type: enum
+    values: [New, "Like New", Good, Fair, Poor]
+  - name: description
+    label: "Description"
+    type: multiline
+    max-length: 500

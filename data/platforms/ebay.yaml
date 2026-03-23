@@ -1,0 +1,23 @@
+id: EBAY
+label: "eBay"
+fields:
+  - name: title
+    label: "Title"
+    type: text
+    max-length: 80
+  - name: price
+    label: "Starting Price"
+    type: number
+  - name: category
+    label: "Category"
+    type: text
+  - name: condition
+    label: "Condition"
+    type: enum
+    values: [New, "Like New", Good, Acceptable, "For parts or not working"]
+  - name: description
+    label: "Description"
+    type: multiline
+  - name: shipping
+    label: "Shipping"
+    type: text

@@ -17,26 +17,16 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 1 — Config loading
+## ~~Slice 1 — Config loading~~ ✅ DONE
 
 **Goal:** App reads `data/config/config.yaml` and `data/secrets.yaml` on startup; exposes platform profiles via API.
 
-### Backend
-- Define Kotlin data classes: `AppConfig`, `DecayConfig`, `SecretsConfig`, `PlatformProfile`, `FieldSpec`.
-- Load YAML files using kaml on startup; crash with a clear message if missing.
-- Ship the 6 platform YAML files under `data/platforms/`.
-- `GET /api/v1/config/platforms` → returns all platform profiles as JSON.
-- `GET /api/v1/config/decay` → returns decay config.
+**Completed:** `ConfigModels.kt` defines `AppConfig`, `DecayConfig`, `SecretsConfig`, `PlatformProfile`, `FieldSpec`. `ConfigLoader.kt` loads YAML via kaml on startup; crashes with clear message if files missing. 6 platform YAML files written under `data/platforms/` (craigslist, facebook, kijiji, offerup, ebay, nextdoor). `GET /api/v1/config/platforms` and `GET /api/v1/config/decay` routes added. `Application.kt` updated to read port from config. `App.tsx` gains a collapsible `PlatformsDebug` dev-only component.
 
-### Frontend
-- Add a simple `PlatformsDebug` component (hidden, dev-only) that calls `/api/v1/config/platforms` and dumps the JSON.
-
-### Test
-```bash
-./gradlew run
-curl http://localhost:45966/api/v1/config/platforms
-# should return all 6 platforms with their fields
-```
+**Notes:**
+- `data/config/secrets.yaml` is gitignored-by-convention; placeholder file created with `sk-ant-REPLACE-WITH-YOUR-KEY`.
+- Port is now read from `data/config/config.yaml` (default 45966).
+- Run: `gradle run` (not `./gradlew run`) on this machine.
 
 ---
 

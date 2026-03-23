@@ -1,0 +1,4 @@
+port: 45966
+decay:
+  check-interval-days: 7
+  drop-percent: 0.10

@@ -1,0 +1,24 @@
+id: FACEBOOK
+label: "Facebook Marketplace"
+fields:
+  - name: title
+    label: "Title"
+    type: text
+    max-length: 100
+  - name: price
+    label: "Price"
+    type: number
+  - name: category
+    label: "Category"
+    type: text
+  - name: condition
+    label: "Condition"
+    type: enum
+    values: [New, "Like New", Good, Fair, Poor]
+  - name: description
+    label: "Description"
+    type: multiline
+  - name: availability
+    label: "Availability"
+    type: enum
+    values: ["Local pickup", Shipping, "Local pickup or Shipping"]
