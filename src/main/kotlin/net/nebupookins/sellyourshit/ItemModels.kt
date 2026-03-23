@@ -36,7 +36,8 @@ data class Item(
     val createdAt: String,
     val updatedAt: String,
     val archivedAt: String? = null,
-    val listings: List<Listing> = emptyList()
+    val listings: List<Listing> = emptyList(),
+    val photos: List<String> = emptyList()
 )
 
 @Serializable
@@ -50,3 +51,6 @@ data class PatchItemRequest(
     val rawDescription: String? = null,
     val minimumPrice: Double? = null
 )
+
+@Serializable
+data class PhotoOrderRequest(val order: List<String>)

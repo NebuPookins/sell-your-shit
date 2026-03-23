@@ -43,28 +43,17 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 3 — Photo upload and serving
+## ~~Slice 3 — Photo upload and serving~~ ✅ DONE
 
 **Goal:** Upload photos with an item; view them on the item detail page.
 
-### Backend
-- `POST /api/v1/items` — extend to accept multipart (description + photos); save originals to `data/photos/{id}/original/`.
-- Generate resized copies (max 1024px, JPEG 85) using a pure-Kotlin/JVM image library (e.g. `java.awt.Image` + ImageIO or `scrimage`). Save to `data/photos/{id}/resized/`.
-- `GET /photos/{itemId}/{filename}` — serve photo files statically.
-- `POST /api/v1/items/{id}/photos` — upload additional photos.
-- `DELETE /api/v1/items/{id}/photos/{filename}` — delete a photo.
-- `PATCH /api/v1/items/{id}/photos/order` — reorder photo list in item YAML.
+**Completed:** `Item` model gains `photos: List<String>`. `ItemRepository` adds `addPhoto` (saves original + JPEG-resized copy via `javax.imageio`), `deletePhoto`, `reorderPhotos`, `getResizedPhotoFile`. `POST /api/v1/items` changed to multipart (fields + file parts). New routes: `POST /api/v1/items/{id}/photos`, `DELETE /api/v1/items/{id}/photos/{filename}`, `PATCH /api/v1/items/{id}/photos/order`. `GET /photos/{itemId}/{filename}` serves from `data/photos/{itemId}/resized/`. Frontend: `NewItem` sends `FormData` with file picker (max 10, 10 MB, JPEG/PNG). `ItemDetail` shows `PhotoStrip` (HTML5 drag-to-reorder, delete button) and `AddPhotos` uploader. `PhotoOrderRequest` added to models.
 
-### Frontend
-- `/items/new` — add file picker (multi, JPEG/PNG, max 10, 10 MB each); submit as multipart.
-- `/items/:id` — show photo thumbnails (served from `/photos/...`) in a horizontal strip with delete buttons.
-- Add drag-to-reorder on the photo strip (react-beautiful-dnd or similar).
-
-### Test
-- Create item with 2–3 photos; verify files appear in `data/photos/{id}/original/` and `resized/`.
-- View item page; thumbnails render.
-- Delete a photo; confirm it disappears from UI and filesystem.
-- Reorder; confirm YAML reflects new order.
+**Notes:**
+- Image resizing uses pure JDK (`java.awt` + `javax.imageio`); no extra library needed.
+- All resized copies stored as JPEG (quality 0.85, max 1024px). Original preserved as-is.
+- `streamProvider` is deprecated in Ktor 3.x; suppressed with `@Suppress("DEPRECATION")` — acceptable until Ktor provides a stable `provider()` + kotlinx-io replacement.
+- No new Gradle dependencies required for multipart or image processing.
 
 ---
 

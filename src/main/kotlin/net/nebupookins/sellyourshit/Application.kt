@@ -1,5 +1,6 @@
 package net.nebupookins.sellyourshit
 
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -40,6 +41,17 @@ fun Application.module(settings: AppSettings, dataDir: File) {
         }
 
         itemRoutes(itemRepo)
+
+        get("/photos/{itemId}/{filename}") {
+            val itemId = call.parameters["itemId"]!!
+            val filename = call.parameters["filename"]!!
+            val file = itemRepo.getResizedPhotoFile(itemId, filename)
+            if (!file.exists()) {
+                call.respond(HttpStatusCode.NotFound)
+                return@get
+            }
+            call.respondBytes(file.readBytes(), ContentType.Image.JPEG)
+        }
 
         // Serve frontend static files (must be last)
         staticFiles()

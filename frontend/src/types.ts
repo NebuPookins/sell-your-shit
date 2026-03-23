@@ -27,4 +27,5 @@ export interface Item {
   updatedAt: string
   archivedAt: string | null
   listings: Listing[]
+  photos: string[]
 }
