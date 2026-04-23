@@ -57,31 +57,18 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 4 — LLM generation
+## ~~Slice 4 — LLM generation~~ ✅ DONE
 
 **Goal:** Call Claude API to generate listing fields; store results as DRAFT listings.
 
-### Backend
-- `ClaudeClient`: builds the multimodal prompt (system prompt + description + platform profiles JSON + base64 resized photos), calls `claude-sonnet-4-20250514`, parses response JSON.
-- Handle `_uncertain` flags in parsed fields.
-- `POST /api/v1/items/{id}/generate` — accepts `{platforms: ["CRAIGSLIST","FACEBOOK",...]}`.
-  - Calls `ClaudeClient`.
-  - On success: upsert one DRAFT `Listing` per platform into the item file.
-  - On API error: return 502 with error details (do not lose existing data).
-  - On JSON parse error: return 422 with raw response in body.
-- Expose `suggestedPrice` from LLM response in the listing.
+**Completed:** `ClaudeClient.kt` (new file) builds a multimodal prompt (system prompt + description + platform profiles JSON + base64 resized photos), calls `claude-sonnet-4-20250514`, strips markdown code fences from response, parses JSON. `ClaudeApiException` and `ClaudeParseException` defined. `GenerateRequest` model added to `ItemModels.kt`. `ItemRepository.addGeneratedListing` upserts a DRAFT `Listing` by platform ID. `POST /api/v1/items/{id}/generate` route added to `ItemRoutes.kt` — returns 502 on API error, 422 with `rawResponse` on parse error. `Application.kt` wires `ClaudeClient` from secrets, closes HTTP client on shutdown. `build.gradle.kts` adds `ktor-client-core` and `ktor-client-cio`. Frontend: `types.ts` gains `FieldSpec` and `PlatformProfile` interfaces; `NewItem.tsx` loads platforms from `/api/v1/config/platforms`, shows checkboxes (all pre-checked), runs generate after item creation, shows phase-aware button text, and displays an error banner with a retry button if generation fails.
 
-### Frontend
-- `/items/new` — add platform multi-select checkboxes (all checked by default); show "Generate" button.
-- After item is created (POST `/api/v1/items`), immediately POST `/api/v1/items/{id}/generate`; show a spinner.
-- On success: navigate to `/items/:id`.
-- On error: show error banner with retry button (re-POSTs generate without re-uploading photos).
-
-### Test
-- Create item with description + photos + platforms selected.
-- Spinner appears; after ~5s, redirected to item detail.
-- Item YAML contains one DRAFT listing per selected platform with generated fields.
-- Test error path: temporarily use a bad API key; error banner appears with retry.
+**Notes:**
+- Uncertain fields stored as `fieldname_uncertain: "true"` alongside normal fields in `generatedFields` map.
+- `suggestedPrice` from LLM is stored on the `Listing` object directly.
+- Item creation flow uses three phases: `idle → creating → generating → (navigate or error)`.
+- If no platforms are selected, item is created and navigation happens without calling generate.
+- Manual test steps (not yet run): create item with photos + platforms, verify DRAFT listings in YAML; test bad-API-key error path.
 
 ---
 

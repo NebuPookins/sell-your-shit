@@ -1,15 +1,28 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import type { Item } from '../types'
+import type { Item, PlatformProfile } from '../types'
 
 export function NewItem() {
   const navigate = useNavigate()
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
+  const [platforms, setPlatforms] = useState<PlatformProfile[]>([])
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [phase, setPhase] = useState<'idle' | 'creating' | 'generating' | 'error'>('idle')
+  const [createdItemId, setCreatedItemId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/v1/config/platforms')
+      .then(r => r.json())
+      .then((data: PlatformProfile[]) => {
+        setPlatforms(data)
+        setSelectedPlatforms(new Set(data.map(p => p.id)))
+      })
+      .catch(() => {/* non-fatal, platforms stay empty */})
+  }, [])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -26,14 +39,42 @@ export function NewItem() {
     setPhotos(files)
   }
 
+  function togglePlatform(id: string) {
+    setSelectedPlatforms(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function runGenerate(itemId: string) {
+    setPhase('generating')
+    try {
+      const res = await fetch(`/api/v1/items/${itemId}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platforms: Array.from(selectedPlatforms) }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `Server error ${res.status}` }))
+        throw new Error(body.error ?? `Server error ${res.status}`)
+      }
+      navigate(`/items/${itemId}`)
+    } catch (e) {
+      setError(String(e))
+      setPhase('error')
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
+    setPhase('creating')
     setError(null)
     try {
       const formData = new FormData()
       formData.append('rawDescription', description)
-      formData.append('minimumPrice', price)
+      if (price !== '') formData.append('minimumPrice', price)
       for (const file of photos) {
         formData.append('photos', file)
       }
@@ -43,12 +84,21 @@ export function NewItem() {
       })
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const item: Item = await res.json()
-      navigate(`/items/${item.id}`)
+      setCreatedItemId(item.id)
+
+      if (selectedPlatforms.size === 0) {
+        navigate(`/items/${item.id}`)
+        return
+      }
+
+      await runGenerate(item.id)
     } catch (e) {
       setError(String(e))
-      setSubmitting(false)
+      setPhase('error')
     }
   }
+
+  const submitting = phase === 'creating' || phase === 'generating'
 
   return (
     <div>
@@ -65,20 +115,21 @@ export function NewItem() {
               required
               rows={6}
               cols={60}
+              disabled={submitting}
             />
           </label>
         </div>
         <div>
           <label>
-            Minimum Price ($)
+            Minimum Price (optional, $)
             <br />
             <input
               type="number"
               value={price}
               onChange={e => setPrice(e.target.value)}
-              required
               min="0"
               step="0.01"
+              disabled={submitting}
             />
           </label>
         </div>
@@ -92,16 +143,49 @@ export function NewItem() {
               accept="image/jpeg,image/png"
               multiple
               onChange={handleFileChange}
+              disabled={submitting}
             />
           </label>
           {photos.length > 0 && (
             <p>{photos.length} photo{photos.length !== 1 ? 's' : ''} selected</p>
           )}
         </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create Item'}
-        </button>
+        {platforms.length > 0 && (
+          <div>
+            <p><strong>Generate listings for:</strong></p>
+            {platforms.map(p => (
+              <label key={p.id} style={{ display: 'block', marginBottom: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedPlatforms.has(p.id)}
+                  onChange={() => togglePlatform(p.id)}
+                  disabled={submitting}
+                />
+                {' '}{p.label}
+              </label>
+            ))}
+          </div>
+        )}
+        {error && (
+          <div style={{ color: 'red', marginTop: 8 }}>
+            <p>{error}</p>
+            {phase === 'error' && createdItemId && (
+              <button
+                type="button"
+                onClick={() => runGenerate(createdItemId)}
+              >
+                Retry Generation
+              </button>
+            )}
+          </div>
+        )}
+        <div style={{ marginTop: 12 }}>
+          <button type="submit" disabled={submitting}>
+            {phase === 'creating' ? 'Creating item…' :
+             phase === 'generating' ? 'Generating listings… (this may take ~10s)' :
+             'Create Item'}
+          </button>
+        </div>
       </form>
     </div>
   )

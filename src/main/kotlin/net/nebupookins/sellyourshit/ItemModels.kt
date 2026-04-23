@@ -32,7 +32,7 @@ data class Listing(
 data class Item(
     val id: String,
     val rawDescription: String,
-    val minimumPrice: Double,
+    val minimumPrice: Double? = null,
     val createdAt: String,
     val updatedAt: String,
     val archivedAt: String? = null,
@@ -43,7 +43,7 @@ data class Item(
 @Serializable
 data class CreateItemRequest(
     val rawDescription: String,
-    val minimumPrice: Double
+    val minimumPrice: Double? = null
 )
 
 @Serializable
@@ -54,3 +54,6 @@ data class PatchItemRequest(
 
 @Serializable
 data class PhotoOrderRequest(val order: List<String>)
+
+@Serializable
+data class GenerateRequest(val platforms: List<String>)

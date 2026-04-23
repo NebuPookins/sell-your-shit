@@ -17,7 +17,7 @@ class ItemRepository(private val dataDir: File) {
     private val itemsDir = File(dataDir, "items").also { it.mkdirs() }
     private val photosDir = File(dataDir, "photos")
 
-    fun createItem(rawDescription: String, minimumPrice: Double): Item {
+    fun createItem(rawDescription: String, minimumPrice: Double?): Item {
         val now = Instant.now().toString()
         val item = Item(
             id = UUID.randomUUID().toString(),
@@ -110,6 +110,34 @@ class ItemRepository(private val dataDir: File) {
             photos = order.filter { it in existing },
             updatedAt = Instant.now().toString()
         )
+        saveItem(updated)
+        return updated
+    }
+
+    fun addGeneratedListing(
+        itemId: String,
+        platformId: String,
+        fields: Map<String, String>,
+        askingPrice: Double?
+    ): Item? {
+        val item = getItem(itemId) ?: return null
+        val now = Instant.now().toString()
+        val listing = Listing(
+            id = UUID.randomUUID().toString(),
+            platformId = platformId,
+            status = ListingStatus.DRAFT,
+            generatedFields = fields,
+            askingPrice = askingPrice,
+            createdAt = now,
+            updatedAt = now
+        )
+        val existingIdx = item.listings.indexOfFirst { it.platformId == platformId }
+        val updatedListings = if (existingIdx >= 0) {
+            item.listings.toMutableList().also { it[existingIdx] = listing }
+        } else {
+            item.listings + listing
+        }
+        val updated = item.copy(listings = updatedListings, updatedAt = now)
         saveItem(updated)
         return updated
     }

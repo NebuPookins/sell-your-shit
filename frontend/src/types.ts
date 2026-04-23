@@ -1,3 +1,17 @@
+export interface FieldSpec {
+  name: string
+  label: string
+  type: 'text' | 'number' | 'enum' | 'multiline'
+  'max-length'?: number
+  values?: string[]
+}
+
+export interface PlatformProfile {
+  id: string
+  label: string
+  fields: FieldSpec[]
+}
+
 export interface PriceHistoryEntry {
   price: number
   reason: string
