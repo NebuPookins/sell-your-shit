@@ -5,7 +5,6 @@ import type { Item, PlatformProfile } from '../types'
 export function NewItem() {
   const navigate = useNavigate()
   const [description, setDescription] = useState('')
-  const [price, setPrice] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
   const [platforms, setPlatforms] = useState<PlatformProfile[]>([])
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
@@ -74,8 +73,7 @@ export function NewItem() {
     try {
       const formData = new FormData()
       formData.append('rawDescription', description)
-      if (price !== '') formData.append('minimumPrice', price)
-      for (const file of photos) {
+for (const file of photos) {
         formData.append('photos', file)
       }
       const res = await fetch('/api/v1/items', {
@@ -115,20 +113,6 @@ export function NewItem() {
               required
               rows={6}
               cols={60}
-              disabled={submitting}
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            Minimum Price (optional, $)
-            <br />
-            <input
-              type="number"
-              value={price}
-              onChange={e => setPrice(e.target.value)}
-              min="0"
-              step="0.01"
               disabled={submitting}
             />
           </label>

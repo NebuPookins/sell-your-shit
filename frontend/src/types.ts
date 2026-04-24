@@ -36,7 +36,6 @@ export interface Listing {
 export interface Item {
   id: string
   rawDescription: string
-  minimumPrice: number
   createdAt: string
   updatedAt: string
   archivedAt: string | null

@@ -25,11 +25,11 @@ function PhotoStrip({ item, onUpdate }: { item: Item; onUpdate: (i: Item) => voi
     if (res.ok) onUpdate(await res.json())
   }
 
-  if (item.photos.length === 0) return <p style={{ color: '#888' }}>No photos yet.</p>
+  if ((item.photos?.length ?? 0) === 0) return <p style={{ color: '#888' }}>No photos yet.</p>
 
   return (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      {item.photos.map((filename, idx) => (
+      {(item.photos ?? []).map((filename, idx) => (
         <div
           key={filename}
           draggable

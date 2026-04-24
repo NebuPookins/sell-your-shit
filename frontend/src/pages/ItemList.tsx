@@ -29,7 +29,6 @@ export function ItemList() {
           <thead>
             <tr>
               <th>Description</th>
-              <th>Min Price</th>
               <th>Listings</th>
               <th>Created</th>
             </tr>
@@ -42,8 +41,7 @@ export function ItemList() {
                     {item.rawDescription.slice(0, 60)}{item.rawDescription.length > 60 ? '…' : ''}
                   </Link>
                 </td>
-                <td>${item.minimumPrice}</td>
-                <td>{item.listings.length}</td>
+                <td>{item.listings?.length ?? 0}</td>
                 <td>{new Date(item.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}

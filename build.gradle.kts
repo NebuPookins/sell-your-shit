@@ -68,3 +68,38 @@ tasks.named("processResources") {
 tasks.test {
     useJUnitPlatform()
 }
+
+// Dev mode: starts Vite dev server + Kotlin backend concurrently.
+// Open http://localhost:5173 (not 45966) — Vite proxies /api and /photos to the backend.
+tasks.register("runDev") {
+    val mainSourceSet = sourceSets.main.get()
+    dependsOn("classes")
+    doLast {
+        fun Process.pumpStreams() {
+            Thread { inputStream.copyTo(System.out) }.also { it.isDaemon = true }.start()
+            Thread { errorStream.copyTo(System.err) }.also { it.isDaemon = true }.start()
+        }
+
+        val javaExe = "${System.getProperty("java.home")}/bin/java"
+        val viteProcess = ProcessBuilder("npm", "run", "dev")
+            .directory(file("frontend"))
+            .start()
+            .also { it.pumpStreams() }
+        val backendProcess = ProcessBuilder(
+            javaExe, "-cp", mainSourceSet.runtimeClasspath.asPath,
+            "net.nebupookins.sellyourshit.ApplicationKt"
+        )
+            .start()
+            .also { it.pumpStreams() }
+        fun killAll() {
+            viteProcess.destroyForcibly()
+            backendProcess.destroyForcibly()
+        }
+        Runtime.getRuntime().addShutdownHook(Thread(::killAll))
+        try {
+            backendProcess.waitFor()
+        } finally {
+            killAll()
+        }
+    }
+}

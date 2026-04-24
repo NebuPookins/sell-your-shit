@@ -17,12 +17,11 @@ class ItemRepository(private val dataDir: File) {
     private val itemsDir = File(dataDir, "items").also { it.mkdirs() }
     private val photosDir = File(dataDir, "photos")
 
-    fun createItem(rawDescription: String, minimumPrice: Double?): Item {
+    fun createItem(rawDescription: String): Item {
         val now = Instant.now().toString()
         val item = Item(
             id = UUID.randomUUID().toString(),
             rawDescription = rawDescription,
-            minimumPrice = minimumPrice,
             createdAt = now,
             updatedAt = now
         )
@@ -54,11 +53,10 @@ class ItemRepository(private val dataDir: File) {
         }
     }
 
-    fun updateItem(id: String, rawDescription: String? = null, minimumPrice: Double? = null): Item? {
+    fun updateItem(id: String, rawDescription: String? = null): Item? {
         val item = getItem(id) ?: return null
         val updated = item.copy(
             rawDescription = rawDescription ?: item.rawDescription,
-            minimumPrice = minimumPrice ?: item.minimumPrice,
             updatedAt = Instant.now().toString()
         )
         saveItem(updated)

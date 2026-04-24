@@ -18,14 +18,12 @@ fun Route.itemRoutes(
         post {
             val multipart = call.receiveMultipart()
             var rawDescription = ""
-            var minimumPrice: Double? = null
             val photoBytes = mutableListOf<ByteArray>()
 
             multipart.forEachPart { part ->
                 when (part) {
                     is PartData.FormItem -> when (part.name) {
                         "rawDescription" -> rawDescription = part.value
-                        "minimumPrice" -> minimumPrice = part.value.toDoubleOrNull()
                     }
                     is PartData.FileItem -> {
                         val bytes = @Suppress("DEPRECATION") part.streamProvider().readBytes()
@@ -36,8 +34,8 @@ fun Route.itemRoutes(
                 part.dispose()
             }
 
-            logger.info("Creating item: descLen=${rawDescription.length}, photos=${photoBytes.size}, minimumPrice=$minimumPrice")
-            var item = itemRepo.createItem(rawDescription, minimumPrice)
+            logger.info("Creating item: descLen=${rawDescription.length}, photos=${photoBytes.size}")
+            var item = itemRepo.createItem(rawDescription)
             for (bytes in photoBytes) {
                 item = itemRepo.addPhoto(item.id, bytes) ?: item
             }
@@ -60,7 +58,7 @@ fun Route.itemRoutes(
             patch {
                 val id = call.parameters["id"]!!
                 val request = call.receive<PatchItemRequest>()
-                val item = itemRepo.updateItem(id, request.rawDescription, request.minimumPrice)
+                val item = itemRepo.updateItem(id, request.rawDescription)
                 if (item == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Item not found"))
                 else call.respond(item)
             }
