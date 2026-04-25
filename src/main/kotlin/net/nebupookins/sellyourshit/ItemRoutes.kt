@@ -14,6 +14,16 @@ fun Route.itemRoutes(
     claudeClient: ClaudeClient,
     platforms: List<PlatformProfile>
 ) {
+    route("/api/v1/listings") {
+        patch("/{listingId}") {
+            val listingId = call.parameters["listingId"]!!
+            val request = call.receive<PatchListingRequest>()
+            val listing = itemRepo.updateListing(listingId, request.generatedFields, request.askingPrice, request.notes)
+            if (listing == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Listing not found"))
+            else call.respond(listing)
+        }
+    }
+
     route("/api/v1/items") {
         post {
             val multipart = call.receiveMultipart()

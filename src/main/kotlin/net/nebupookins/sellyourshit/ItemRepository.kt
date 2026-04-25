@@ -140,6 +140,26 @@ class ItemRepository(private val dataDir: File) {
         return updated
     }
 
+    fun updateListing(listingId: String, fields: Map<String, String>, askingPrice: Double?, notes: String): Listing? {
+        val items = listItems()
+        for (item in items) {
+            val idx = item.listings.indexOfFirst { it.id == listingId }
+            if (idx >= 0) {
+                val now = Instant.now().toString()
+                val updated = item.listings[idx].copy(
+                    generatedFields = fields,
+                    askingPrice = askingPrice,
+                    notes = notes,
+                    updatedAt = now
+                )
+                val updatedListings = item.listings.toMutableList().also { it[idx] = updated }
+                saveItem(item.copy(listings = updatedListings, updatedAt = now))
+                return updated
+            }
+        }
+        return null
+    }
+
     fun getResizedPhotoFile(itemId: String, filename: String): File =
         File(photosDir, "$itemId/resized/$filename")
 

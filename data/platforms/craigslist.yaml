@@ -5,9 +5,6 @@ fields:
     label: "Title"
     type: text
     max-length: 70
-  - name: price
-    label: "Price"
-    type: number
   - name: category
     label: "Category"
     type: text

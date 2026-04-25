@@ -72,27 +72,17 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 5 — Item detail: editable platform tabs
+## ~~Slice 5 — Item detail: editable platform tabs~~ ✅ DONE
 
 **Goal:** View and edit generated listings per platform; copy individual fields or all fields.
 
-### Backend
-- `PATCH /api/v1/listings/{listingId}` — update any subset of `generatedFields`, `askingPrice`, `notes`.
+**Completed:** `PatchListingRequest` model added to `ItemModels.kt`. `ItemRepository.updateListing` searches all items for the listing ID and saves updated fields/price/notes. `PATCH /api/v1/listings/{listingId}` route added to `ItemRoutes.kt` (returns updated `Listing`). Frontend `ItemDetail.tsx` replaced JSON dump with: sidebar photos (column layout), tabbed listings (one tab per platform using `platform.label`), `ListingTab` component with per-field inputs typed by `FieldSpec.type` (text/number/textarea/select), yellow "uncertain" badge + background for `_uncertain` fields, per-field Copy button, Copy All button (formats as "Label: value\n…"), auto-save on blur (or onChange for select), asking price + notes inputs. Blur handlers use refs to avoid stale-closure bugs.
 
-### Frontend
-- `/items/:id` — replace JSON dump with tabbed UI (one tab per listing).
-- Each tab renders generated fields as labeled inputs (text, number, textarea for multiline, select for enum).
-- Uncertain fields (`_uncertain: true`) rendered with a yellow highlight.
-- Each field has a **Copy** button (copies field value to clipboard).
-- **Copy All** button formats all fields as "FieldLabel: value\n..." and copies.
-- On blur of any input, auto-save via PATCH `/api/v1/listings/{id}`.
-- Show photo thumbnails in a sidebar.
-
-### Test
-- Open item; tabs appear for each platform.
-- Edit a field; blur; refresh page — edit persisted.
-- Click Copy on a field; paste elsewhere → correct value.
-- Click Copy All; paste → formatted block with all fields.
+**Notes:**
+- Listings are stored inside item YAML; `updateListing` scans all items to find the listing by ID.
+- `PatchListingRequest.generatedFields` replaces the entire map on save (frontend always sends full map).
+- Uncertain-field metadata keys (`fieldName_uncertain`) are excluded from display; only `PlatformProfile.fields` specs drive the rendered field list.
+- `key={listings[activeTab].id}` causes `ListingTab` to remount on tab switch, so unsaved edits on another tab are lost — auto-save on blur mitigates this.
 
 ---
 

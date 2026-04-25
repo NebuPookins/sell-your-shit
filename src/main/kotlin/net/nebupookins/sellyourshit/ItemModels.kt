@@ -54,3 +54,10 @@ data class PhotoOrderRequest(val order: List<String>)
 
 @Serializable
 data class GenerateRequest(val platforms: List<String>)
+
+@Serializable
+data class PatchListingRequest(
+    val generatedFields: Map<String, String>,
+    val askingPrice: Double? = null,
+    val notes: String = ""
+)

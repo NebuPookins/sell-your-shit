@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import type { Item } from '../types'
+import type { FieldSpec, Item, Listing, PlatformProfile } from '../types'
 
 function PhotoStrip({ item, onUpdate }: { item: Item; onUpdate: (i: Item) => void }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null)
@@ -25,10 +25,10 @@ function PhotoStrip({ item, onUpdate }: { item: Item; onUpdate: (i: Item) => voi
     if (res.ok) onUpdate(await res.json())
   }
 
-  if ((item.photos?.length ?? 0) === 0) return <p style={{ color: '#888' }}>No photos yet.</p>
+  if ((item.photos?.length ?? 0) === 0) return <p style={{ color: '#888', fontSize: 13 }}>No photos yet.</p>
 
   return (
-    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {(item.photos ?? []).map((filename, idx) => (
         <div
           key={filename}
@@ -95,8 +95,8 @@ function AddPhotos({ itemId, onUpdate }: { itemId: string; onUpdate: (i: Item) =
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       onUpdate(await res.json())
       if (inputRef.current) inputRef.current.value = ''
-    } catch (e) {
-      setError(String(e))
+    } catch (err) {
+      setError(String(err))
     } finally {
       setUploading(false)
     }
@@ -104,7 +104,7 @@ function AddPhotos({ itemId, onUpdate }: { itemId: string; onUpdate: (i: Item) =
 
   return (
     <div style={{ marginTop: 8 }}>
-      <label>
+      <label style={{ fontSize: 13 }}>
         {uploading ? 'Uploading…' : 'Add photos:'}
         {' '}
         <input
@@ -114,9 +114,217 @@ function AddPhotos({ itemId, onUpdate }: { itemId: string; onUpdate: (i: Item) =
           multiple
           disabled={uploading}
           onChange={handleChange}
+          style={{ fontSize: 12 }}
         />
       </label>
-      {error && <span style={{ color: 'red', marginLeft: 8 }}>{error}</span>}
+      {error && <div style={{ color: 'red', fontSize: 12 }}>{error}</div>}
+    </div>
+  )
+}
+
+function FieldInput({
+  spec,
+  value,
+  isUncertain,
+  onChange,
+  onBlur,
+}: {
+  spec: FieldSpec
+  value: string
+  isUncertain: boolean
+  onChange: (v: string) => void
+  onBlur: (v: string) => void
+}) {
+  const base: React.CSSProperties = isUncertain
+    ? { flex: 1, background: '#fffbcc', color: '#333' }
+    : { flex: 1 }
+
+  if (spec.type === 'multiline') {
+    return (
+      <textarea
+        value={value}
+        style={{ ...base, minHeight: 80, resize: 'vertical', padding: 4 }}
+        onChange={e => onChange(e.target.value)}
+        onBlur={e => onBlur(e.target.value)}
+      />
+    )
+  }
+  if (spec.type === 'enum') {
+    return (
+      <select
+        value={value}
+        style={{ ...base }}
+        onChange={e => { onChange(e.target.value); onBlur(e.target.value) }}
+      >
+        {(spec.values ?? []).map(v => <option key={v} value={v}>{v}</option>)}
+      </select>
+    )
+  }
+  return (
+    <input
+      type={spec.type === 'number' ? 'number' : 'text'}
+      value={value}
+      style={{ ...base, padding: 4 }}
+      onChange={e => onChange(e.target.value)}
+      onBlur={e => onBlur(e.target.value)}
+    />
+  )
+}
+
+function ListingTab({
+  listing,
+  platform,
+  onUpdate,
+}: {
+  listing: Listing
+  platform: PlatformProfile | undefined
+  onUpdate: (l: Listing) => void
+}) {
+  const [fields, setFields] = useState<Record<string, string>>(listing.generatedFields)
+  const [askingPrice, setAskingPrice] = useState<number | null>(listing.askingPrice)
+  const [notes, setNotes] = useState(listing.notes)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Refs so blur handlers always read latest values without stale-closure issues
+  const fieldsRef = useRef(fields)
+  fieldsRef.current = fields
+  const askingPriceRef = useRef(askingPrice)
+  askingPriceRef.current = askingPrice
+  const notesRef = useRef(notes)
+  notesRef.current = notes
+
+  async function save(
+    currentFields: Record<string, string>,
+    currentPrice: number | null,
+    currentNotes: string
+  ) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(`/api/v1/listings/${listing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generatedFields: currentFields, askingPrice: currentPrice, notes: currentNotes }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      onUpdate(await res.json())
+    } catch (err) {
+      setSaveError(String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function copyField(value: string) {
+    navigator.clipboard.writeText(value)
+  }
+
+  function copyAll() {
+    const parts: string[] = []
+    for (const spec of platform?.fields ?? []) {
+      const v = fieldsRef.current[spec.name] ?? ''
+      parts.push(`${spec.label}: ${v}`)
+    }
+    if (askingPriceRef.current != null) parts.push(`Asking Price: ${askingPriceRef.current}`)
+    navigator.clipboard.writeText(parts.join('\n'))
+  }
+
+  const statusColor = listing.status === 'ACTIVE' ? '#2e7d32' : listing.status === 'SOLD' ? '#1565c0' : '#555'
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <span style={{
+          padding: '2px 10px',
+          borderRadius: 12,
+          background: listing.status === 'DRAFT' ? '#eee' : '#c8e6c9',
+          color: statusColor,
+          fontSize: 13,
+          fontWeight: 600,
+        }}>
+          {listing.status}
+        </span>
+        <button onClick={copyAll}>Copy All</button>
+        {saving && <span style={{ color: '#888', fontSize: 13 }}>Saving…</span>}
+        {saveError && <span style={{ color: 'red', fontSize: 13 }}>{saveError}</span>}
+      </div>
+
+      {(platform?.fields ?? []).map(spec => {
+        const value = fields[spec.name] ?? ''
+        const isUncertain = fields[spec.name + '_uncertain'] === 'true'
+        return (
+          <div key={spec.name} style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+              {spec.label}
+              {isUncertain && (
+                <span style={{ marginLeft: 6, fontSize: 11, color: '#a07800', background: '#fffbcc', padding: '1px 5px', borderRadius: 4 }}>
+                  uncertain
+                </span>
+              )}
+            </label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              <FieldInput
+                spec={spec}
+                value={value}
+                isUncertain={isUncertain}
+                onChange={v => {
+                  const next = { ...fieldsRef.current, [spec.name]: v }
+                  fieldsRef.current = next
+                  setFields(next)
+                }}
+                onBlur={v => {
+                  const next = { ...fieldsRef.current, [spec.name]: v }
+                  fieldsRef.current = next
+                  setFields(next)
+                  save(next, askingPriceRef.current, notesRef.current)
+                }}
+              />
+              <button onClick={() => copyField(value)} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Copy</button>
+            </div>
+          </div>
+        )
+      })}
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Asking Price</label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            type="number"
+            value={askingPrice ?? ''}
+            style={{ width: 120, padding: 4 }}
+            onChange={e => {
+              const v = e.target.value === '' ? null : Number(e.target.value)
+              askingPriceRef.current = v
+              setAskingPrice(v)
+            }}
+            onBlur={e => {
+              const v = e.target.value === '' ? null : Number(e.target.value)
+              askingPriceRef.current = v
+              setAskingPrice(v)
+              save(fieldsRef.current, v, notesRef.current)
+            }}
+          />
+          <button onClick={() => copyField(askingPrice != null ? String(askingPrice) : '')}>Copy</button>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Notes</label>
+        <textarea
+          value={notes}
+          style={{ width: '100%', minHeight: 60, padding: 4, boxSizing: 'border-box', resize: 'vertical' }}
+          onChange={e => {
+            notesRef.current = e.target.value
+            setNotes(e.target.value)
+          }}
+          onBlur={e => {
+            notesRef.current = e.target.value
+            setNotes(e.target.value)
+            save(fieldsRef.current, askingPriceRef.current, e.target.value)
+          }}
+        />
+      </div>
     </div>
   )
 }
@@ -124,16 +332,23 @@ function AddPhotos({ itemId, onUpdate }: { itemId: string; onUpdate: (i: Item) =
 export function ItemDetail() {
   const { id } = useParams<{ id: string }>()
   const [item, setItem] = useState<Item | null>(null)
+  const [platforms, setPlatforms] = useState<PlatformProfile[]>([])
+  const [activeTab, setActiveTab] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/v1/items/${id}`)
-      .then(r => {
+    Promise.all([
+      fetch(`/api/v1/items/${id}`).then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
+      }),
+      fetch('/api/v1/config/platforms').then(r => r.json()),
+    ])
+      .then(([itemData, platformsData]) => {
+        setItem(itemData)
+        setPlatforms(platformsData)
       })
-      .then(setItem)
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false))
   }, [id])
@@ -142,17 +357,74 @@ export function ItemDetail() {
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
   if (!item) return <p>Item not found.</p>
 
+  const listings = item.listings ?? []
+
   return (
     <div>
       <Link to="/">← Back to list</Link>
-      <h1>{item.rawDescription.slice(0, 60)}{item.rawDescription.length > 60 ? '…' : ''}</h1>
+      <h1 style={{ marginBottom: 16 }}>
+        {item.rawDescription.slice(0, 80)}{item.rawDescription.length > 80 ? '…' : ''}
+      </h1>
 
-      <h2>Photos</h2>
-      <PhotoStrip item={item} onUpdate={setItem} />
-      <AddPhotos itemId={item.id} onUpdate={setItem} />
+      <div style={{ display: 'flex', gap: 24 }}>
+        {/* Photo sidebar */}
+        <div style={{ width: 140, flexShrink: 0 }}>
+          <h3 style={{ marginTop: 0, fontSize: 14 }}>Photos</h3>
+          <PhotoStrip item={item} onUpdate={setItem} />
+          <AddPhotos itemId={item.id} onUpdate={setItem} />
+        </div>
 
-      <h2>Raw data</h2>
-      <pre>{JSON.stringify(item, null, 2)}</pre>
+        {/* Listings */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {listings.length === 0 ? (
+            <p style={{ color: '#888' }}>No listings yet. Create the item with platforms selected to generate listings.</p>
+          ) : (
+            <>
+              {/* Tab bar */}
+              <div style={{ display: 'flex', borderBottom: '2px solid #e0e0e0', marginBottom: 20 }}>
+                {listings.map((listing, idx) => {
+                  const platform = platforms.find(p => p.id === listing.platformId)
+                  return (
+                    <button
+                      key={listing.id}
+                      onClick={() => setActiveTab(idx)}
+                      style={{
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderBottom: activeTab === idx ? '2px solid #1976d2' : '2px solid transparent',
+                        marginBottom: -2,
+                        background: 'none',
+                        cursor: 'pointer',
+                        fontWeight: activeTab === idx ? 600 : 400,
+                        color: activeTab === idx ? '#1976d2' : '#555',
+                        fontSize: 14,
+                      }}
+                    >
+                      {platform?.label ?? listing.platformId}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Active tab content */}
+              {listings[activeTab] && (
+                <ListingTab
+                  key={listings[activeTab].id}
+                  listing={listings[activeTab]}
+                  platform={platforms.find(p => p.id === listings[activeTab].platformId)}
+                  onUpdate={updatedListing => {
+                    setItem(prev =>
+                      prev
+                        ? { ...prev, listings: prev.listings.map(l => l.id === updatedListing.id ? updatedListing : l) }
+                        : prev
+                    )
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

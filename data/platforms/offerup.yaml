@@ -5,9 +5,6 @@ fields:
     label: "Title"
     type: text
     max-length: 50
-  - name: price
-    label: "Price"
-    type: number
   - name: condition
     label: "Condition"
     type: enum

@@ -92,8 +92,10 @@ tasks.register("runDev") {
             .start()
             .also { it.pumpStreams() }
         fun killAll() {
-            viteProcess.destroyForcibly()
-            backendProcess.destroyForcibly()
+            listOf(viteProcess, backendProcess).forEach { proc ->
+                proc.descendants().forEach { it.destroyForcibly() }
+                proc.destroyForcibly()
+            }
         }
         Runtime.getRuntime().addShutdownHook(Thread(::killAll))
         try {
