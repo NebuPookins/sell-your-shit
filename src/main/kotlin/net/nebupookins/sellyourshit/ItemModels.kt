@@ -71,3 +71,25 @@ data class MarkPostedRequest(
     val expiresAt: String,
     val externalId: String? = null
 )
+
+@Serializable
+data class DashboardEntry(
+    val itemId: String,
+    val itemDescription: String,
+    val itemThumbnail: String?,
+    val listingId: String,
+    val platformId: String,
+    val title: String?,
+    val askingPrice: Double?,
+    val postedAt: String?,
+    val expiresAt: String?,
+    val daysActive: Int?,
+    val renewalReason: String?
+)
+
+@Serializable
+data class DashboardResponse(
+    val renewalQueue: List<DashboardEntry>,
+    val activeListings: List<DashboardEntry>,
+    val closedItems: List<Item>
+)

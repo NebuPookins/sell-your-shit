@@ -57,6 +57,10 @@ fun Application.module(settings: AppSettings, dataDir: File) {
             call.respond(settings.config.decay)
         }
 
+        get("/api/v1/dashboard") {
+            call.respond(itemRepo.getDashboard(settings.config.decay))
+        }
+
         itemRoutes(itemRepo, claudeClient, settings.platforms)
 
         get("/photos/{itemId}/{filename}") {

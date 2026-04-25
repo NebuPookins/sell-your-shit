@@ -7,6 +7,9 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
@@ -191,6 +194,76 @@ class ItemRepository(private val dataDir: File) {
             }
         }
         return null
+    }
+
+    private fun parseInstant(s: String): Instant? =
+        runCatching { Instant.parse(s) }.getOrNull()
+            ?: runCatching { LocalDate.parse(s).atStartOfDay(ZoneOffset.UTC).toInstant() }.getOrNull()
+
+    fun getDashboard(decayConfig: DecayConfig): DashboardResponse {
+        val now = Instant.now()
+        val twoDaysFromNow = now.plus(2, ChronoUnit.DAYS)
+
+        val renewalQueue = mutableListOf<DashboardEntry>()
+        val activeListings = mutableListOf<DashboardEntry>()
+        val closedItems = mutableListOf<Item>()
+
+        for (item in listItems()) {
+            if (item.archivedAt != null) continue
+
+            val nonDraftListings = item.listings.filter { it.status != ListingStatus.DRAFT }
+            if (nonDraftListings.isNotEmpty() && nonDraftListings.all {
+                it.status == ListingStatus.SOLD || it.status == ListingStatus.CANCELLED
+            }) {
+                closedItems.add(item)
+                continue
+            }
+
+            for (listing in item.listings) {
+                if (listing.status != ListingStatus.ACTIVE) continue
+
+                val postedAtInstant = listing.postedAt?.let { parseInstant(it) }
+                val expiresAtInstant = listing.expiresAt?.let { parseInstant(it) }
+                val daysActive = postedAtInstant?.let { ChronoUnit.DAYS.between(it, now).toInt() }
+
+                val renewalReason = when {
+                    expiresAtInstant != null && expiresAtInstant.isBefore(now) -> "expired"
+                    expiresAtInstant != null && expiresAtInstant.isBefore(twoDaysFromNow) -> "expiring-soon"
+                    else -> {
+                        val lastDecayDate = listing.priceHistory
+                            .lastOrNull { it.reason == "decay" }?.date
+                            ?.let { parseInstant(it) }
+                        val reference = lastDecayDate ?: postedAtInstant
+                        if (reference != null && ChronoUnit.DAYS.between(reference, now) >= decayConfig.checkIntervalDays)
+                            "decay-due"
+                        else null
+                    }
+                }
+
+                val entry = DashboardEntry(
+                    itemId = item.id,
+                    itemDescription = item.rawDescription,
+                    itemThumbnail = item.photos.firstOrNull(),
+                    listingId = listing.id,
+                    platformId = listing.platformId,
+                    title = listing.generatedFields["title"] ?: item.rawDescription.take(60),
+                    askingPrice = listing.askingPrice,
+                    postedAt = listing.postedAt,
+                    expiresAt = listing.expiresAt,
+                    daysActive = daysActive,
+                    renewalReason = renewalReason
+                )
+
+                activeListings.add(entry)
+                if (renewalReason != null) renewalQueue.add(entry)
+            }
+        }
+
+        return DashboardResponse(
+            renewalQueue = renewalQueue,
+            activeListings = activeListings.sortedByDescending { it.postedAt },
+            closedItems = closedItems
+        )
     }
 
     fun getResizedPhotoFile(itemId: String, filename: String): File =

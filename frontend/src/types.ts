@@ -42,3 +42,23 @@ export interface Item {
   listings: Listing[]
   photos: string[]
 }
+
+export interface DashboardEntry {
+  itemId: string
+  itemDescription: string
+  itemThumbnail: string | null
+  listingId: string
+  platformId: string
+  title: string | null
+  askingPrice: number | null
+  postedAt: string | null
+  expiresAt: string | null
+  daysActive: number | null
+  renewalReason: string | null
+}
+
+export interface DashboardResponse {
+  renewalQueue: DashboardEntry[]
+  activeListings: DashboardEntry[]
+  closedItems: Item[]
+}
