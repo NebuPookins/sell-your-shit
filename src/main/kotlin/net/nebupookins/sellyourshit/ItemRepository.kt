@@ -261,7 +261,7 @@ class ItemRepository(private val dataDir: File) {
 
         return DashboardResponse(
             renewalQueue = renewalQueue,
-            activeListings = activeListings.sortedByDescending { it.postedAt },
+            activeListings = activeListings.sortedWith(compareBy(nullsLast()) { it.expiresAt }),
             closedItems = closedItems
         )
     }

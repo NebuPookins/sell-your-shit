@@ -49,7 +49,7 @@ export function ItemList() {
                   </Link>
                 </td>
                 <td>{item.listings?.length ?? 0}</td>
-                <td>{new Date(item.createdAt).toLocaleDateString()}</td>
+                <td>{item.createdAt.slice(0, 10)}</td>
                 <td>
                   <button
                     onClick={() => deleteItem(item.id, item.rawDescription)}

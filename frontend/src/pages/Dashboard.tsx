@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { DashboardEntry, DashboardResponse } from '../types'
 
+const fmtDate = (s: string | null) => s ? s.slice(0, 10) : '—'
+
 const RENEWAL_REASON_LABEL: Record<string, string> = {
   'expired': 'Expired',
   'expiring-soon': 'Expiring Soon',
@@ -109,11 +111,11 @@ export function Dashboard() {
                   <td style={{ padding: '4px 8px' }}>
                     {entry.askingPrice != null ? `$${entry.askingPrice.toFixed(2)}` : '—'}
                   </td>
-                  <td style={{ padding: '4px 8px' }}>
-                    {entry.postedAt ? new Date(entry.postedAt).toLocaleDateString() : '—'}
+                  <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                    {fmtDate(entry.postedAt)}
                   </td>
-                  <td style={{ padding: '4px 8px' }}>
-                    {entry.expiresAt ? new Date(entry.expiresAt).toLocaleDateString() : '—'}
+                  <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                    {fmtDate(entry.expiresAt)}
                   </td>
                   <td style={{ padding: '4px 8px' }}>{entry.daysActive ?? '—'}</td>
                 </tr>
