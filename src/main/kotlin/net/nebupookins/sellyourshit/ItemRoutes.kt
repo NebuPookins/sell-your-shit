@@ -18,7 +18,15 @@ fun Route.itemRoutes(
         patch("/{listingId}") {
             val listingId = call.parameters["listingId"]!!
             val request = call.receive<PatchListingRequest>()
-            val listing = itemRepo.updateListing(listingId, request.generatedFields, request.askingPrice, request.notes)
+            val listing = itemRepo.updateListing(listingId, request.generatedFields, request.askingPrice, request.notes, request.postedAt, request.expiresAt, request.externalId)
+            if (listing == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Listing not found"))
+            else call.respond(listing)
+        }
+
+        post("/{listingId}/mark-posted") {
+            val listingId = call.parameters["listingId"]!!
+            val request = call.receive<MarkPostedRequest>()
+            val listing = itemRepo.markListingPosted(listingId, request.postedAt, request.expiresAt, request.externalId)
             if (listing == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Listing not found"))
             else call.respond(listing)
         }

@@ -171,6 +171,92 @@ function FieldInput({
   )
 }
 
+function MarkPostedModal({
+  listingId,
+  onClose,
+  onPosted,
+}: {
+  listingId: string
+  onClose: () => void
+  onPosted: (l: Listing) => void
+}) {
+  const today = new Date().toISOString().slice(0, 10)
+  const [postedAt, setPostedAt] = useState(today)
+  const [expiresAt, setExpiresAt] = useState('')
+  const [externalId, setExternalId] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    if (!expiresAt) { setError('Expiry date is required'); return }
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/v1/listings/${listingId}/mark-posted`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postedAt, expiresAt, externalId: externalId || null }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      onPosted(await res.json())
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 8, padding: 28, minWidth: 340, boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+      }}>
+        <h3 style={{ marginTop: 0, marginBottom: 20 }}>Mark as Posted</h3>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Posted date</label>
+          <input type="date" value={postedAt} onChange={e => setPostedAt(e.target.value)} style={{ padding: 4, width: '100%' }} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Expiry date</label>
+          <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={{ padding: 4, width: '100%' }} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>External listing URL (optional)</label>
+          <input type="text" value={externalId} onChange={e => setExternalId(e.target.value)} placeholder="https://…" style={{ padding: 4, width: '100%' }} />
+        </div>
+        {error && <div style={{ color: 'red', fontSize: 13, marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} disabled={submitting}>Cancel</button>
+          <button
+            onClick={submit}
+            disabled={submitting}
+            style={{ background: '#1976d2', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: 4, cursor: 'pointer' }}
+          >
+            {submitting ? 'Saving…' : 'Mark as Posted'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function daysFromToday(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const target = new Date(y, m - 1, d)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86400000)
+}
+
+function dateFromDays(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 function ListingTab({
   listing,
   platform,
@@ -183,8 +269,13 @@ function ListingTab({
   const [fields, setFields] = useState<Record<string, string>>(listing.generatedFields)
   const [askingPrice, setAskingPrice] = useState<number | null>(listing.askingPrice)
   const [notes, setNotes] = useState(listing.notes)
+  const [postedAt, setPostedAt] = useState(listing.postedAt ?? '')
+  const [expiresAt, setExpiresAt] = useState(listing.expiresAt ?? '')
+  const [expiresAtDays, setExpiresAtDays] = useState(listing.expiresAt ? String(daysFromToday(listing.expiresAt)) : '')
+  const [externalId, setExternalId] = useState(listing.externalId ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showMarkPosted, setShowMarkPosted] = useState(false)
 
   // Refs so blur handlers always read latest values without stale-closure issues
   const fieldsRef = useRef(fields)
@@ -193,11 +284,20 @@ function ListingTab({
   askingPriceRef.current = askingPrice
   const notesRef = useRef(notes)
   notesRef.current = notes
+  const postedAtRef = useRef(postedAt)
+  postedAtRef.current = postedAt
+  const expiresAtRef = useRef(expiresAt)
+  expiresAtRef.current = expiresAt
+  const externalIdRef = useRef(externalId)
+  externalIdRef.current = externalId
 
   async function save(
     currentFields: Record<string, string>,
     currentPrice: number | null,
-    currentNotes: string
+    currentNotes: string,
+    currentPostedAt: string,
+    currentExpiresAt: string,
+    currentExternalId: string
   ) {
     setSaving(true)
     setSaveError(null)
@@ -205,7 +305,14 @@ function ListingTab({
       const res = await fetch(`/api/v1/listings/${listing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ generatedFields: currentFields, askingPrice: currentPrice, notes: currentNotes }),
+        body: JSON.stringify({
+          generatedFields: currentFields,
+          askingPrice: currentPrice,
+          notes: currentNotes,
+          postedAt: currentPostedAt || null,
+          expiresAt: currentExpiresAt || null,
+          externalId: currentExternalId || null,
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       onUpdate(await res.json())
@@ -214,6 +321,10 @@ function ListingTab({
     } finally {
       setSaving(false)
     }
+  }
+
+  function saveAll() {
+    save(fieldsRef.current, askingPriceRef.current, notesRef.current, postedAtRef.current, expiresAtRef.current, externalIdRef.current)
   }
 
   function copyField(value: string) {
@@ -234,6 +345,13 @@ function ListingTab({
 
   return (
     <div>
+      {showMarkPosted && (
+        <MarkPostedModal
+          listingId={listing.id}
+          onClose={() => setShowMarkPosted(false)}
+          onPosted={l => { onUpdate(l); setShowMarkPosted(false) }}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <span style={{
           padding: '2px 10px',
@@ -246,6 +364,14 @@ function ListingTab({
           {listing.status}
         </span>
         <button onClick={copyAll}>Copy All</button>
+        {listing.status === 'DRAFT' && (
+          <button
+            onClick={() => setShowMarkPosted(true)}
+            style={{ background: '#388e3c', color: '#fff', border: 'none', padding: '4px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+          >
+            Mark as Posted
+          </button>
+        )}
         {saving && <span style={{ color: '#888', fontSize: 13 }}>Saving…</span>}
         {saveError && <span style={{ color: 'red', fontSize: 13 }}>{saveError}</span>}
       </div>
@@ -277,7 +403,7 @@ function ListingTab({
                   const next = { ...fieldsRef.current, [spec.name]: v }
                   fieldsRef.current = next
                   setFields(next)
-                  save(next, askingPriceRef.current, notesRef.current)
+                  save(next, askingPriceRef.current, notesRef.current, postedAtRef.current, expiresAtRef.current, externalIdRef.current)
                 }}
               />
               <button onClick={() => copyField(value)} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>Copy</button>
@@ -302,7 +428,7 @@ function ListingTab({
               const v = e.target.value === '' ? null : Number(e.target.value)
               askingPriceRef.current = v
               setAskingPrice(v)
-              save(fieldsRef.current, v, notesRef.current)
+              save(fieldsRef.current, v, notesRef.current, postedAtRef.current, expiresAtRef.current, externalIdRef.current)
             }}
           />
           <button onClick={() => copyField(askingPrice != null ? String(askingPrice) : '')}>Copy</button>
@@ -321,8 +447,66 @@ function ListingTab({
           onBlur={e => {
             notesRef.current = e.target.value
             setNotes(e.target.value)
-            save(fieldsRef.current, askingPriceRef.current, e.target.value)
+            save(fieldsRef.current, askingPriceRef.current, e.target.value, postedAtRef.current, expiresAtRef.current, externalIdRef.current)
           }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Posted date</label>
+        <input
+          type="date"
+          value={postedAt}
+          style={{ padding: 4 }}
+          onChange={e => { postedAtRef.current = e.target.value; setPostedAt(e.target.value) }}
+          onBlur={() => saveAll()}
+        />
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Expiry date</label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="date"
+            value={expiresAt}
+            style={{ padding: 4 }}
+            onChange={e => {
+              const v = e.target.value
+              expiresAtRef.current = v
+              setExpiresAt(v)
+              setExpiresAtDays(v ? String(daysFromToday(v)) : '')
+            }}
+            onBlur={() => saveAll()}
+          />
+          <input
+            type="number"
+            value={expiresAtDays}
+            placeholder="days from today"
+            style={{ width: 60, padding: 4 }}
+            onChange={e => {
+              setExpiresAtDays(e.target.value)
+              const days = parseInt(e.target.value, 10)
+              if (!isNaN(days)) {
+                const date = dateFromDays(days)
+                expiresAtRef.current = date
+                setExpiresAt(date)
+              }
+            }}
+            onBlur={() => saveAll()}
+          />
+          <span style={{ fontSize: 12, color: '#888' }}>days from today</span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>External URL</label>
+        <input
+          type="text"
+          value={externalId}
+          placeholder="https://…"
+          style={{ padding: 4, width: '100%', boxSizing: 'border-box' }}
+          onChange={e => { externalIdRef.current = e.target.value; setExternalId(e.target.value) }}
+          onBlur={() => saveAll()}
         />
       </div>
     </div>

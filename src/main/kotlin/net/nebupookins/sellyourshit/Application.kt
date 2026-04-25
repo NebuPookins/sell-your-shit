@@ -41,7 +41,7 @@ fun Application.module(settings: AppSettings, dataDir: File) {
     }
 
     install(ContentNegotiation) {
-        json(Json { prettyPrint = true })
+        json(Json { prettyPrint = true; encodeDefaults = true })
     }
 
     routing {

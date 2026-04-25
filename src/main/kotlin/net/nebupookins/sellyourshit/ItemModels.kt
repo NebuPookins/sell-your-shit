@@ -59,5 +59,15 @@ data class GenerateRequest(val platforms: List<String>)
 data class PatchListingRequest(
     val generatedFields: Map<String, String>,
     val askingPrice: Double? = null,
-    val notes: String = ""
+    val notes: String = "",
+    val postedAt: String? = null,
+    val expiresAt: String? = null,
+    val externalId: String? = null
+)
+
+@Serializable
+data class MarkPostedRequest(
+    val postedAt: String,
+    val expiresAt: String,
+    val externalId: String? = null
 )

@@ -140,16 +140,49 @@ class ItemRepository(private val dataDir: File) {
         return updated
     }
 
-    fun updateListing(listingId: String, fields: Map<String, String>, askingPrice: Double?, notes: String): Listing? {
+    fun updateListing(
+        listingId: String,
+        fields: Map<String, String>,
+        askingPrice: Double?,
+        notes: String,
+        postedAt: String? = null,
+        expiresAt: String? = null,
+        externalId: String? = null
+    ): Listing? {
+        val items = listItems()
+        for (item in items) {
+            val idx = item.listings.indexOfFirst { it.id == listingId }
+            if (idx >= 0) {
+                val now = Instant.now().toString()
+                val existing = item.listings[idx]
+                val updated = existing.copy(
+                    generatedFields = fields,
+                    askingPrice = askingPrice,
+                    notes = notes,
+                    postedAt = postedAt ?: existing.postedAt,
+                    expiresAt = expiresAt ?: existing.expiresAt,
+                    externalId = externalId ?: existing.externalId,
+                    updatedAt = now
+                )
+                val updatedListings = item.listings.toMutableList().also { it[idx] = updated }
+                saveItem(item.copy(listings = updatedListings, updatedAt = now))
+                return updated
+            }
+        }
+        return null
+    }
+
+    fun markListingPosted(listingId: String, postedAt: String, expiresAt: String, externalId: String?): Listing? {
         val items = listItems()
         for (item in items) {
             val idx = item.listings.indexOfFirst { it.id == listingId }
             if (idx >= 0) {
                 val now = Instant.now().toString()
                 val updated = item.listings[idx].copy(
-                    generatedFields = fields,
-                    askingPrice = askingPrice,
-                    notes = notes,
+                    status = ListingStatus.ACTIVE,
+                    postedAt = postedAt,
+                    expiresAt = expiresAt,
+                    externalId = externalId,
                     updatedAt = now
                 )
                 val updatedListings = item.listings.toMutableList().also { it[idx] = updated }

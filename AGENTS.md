@@ -86,24 +86,15 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 6 — Mark as Posted modal
+## ~~Slice 6 — Mark as Posted modal~~ ✅ DONE
 
 **Goal:** Transition a listing from DRAFT to ACTIVE.
 
-### Backend
-- `POST /api/v1/listings/{id}/mark-posted` — accepts `{postedAt, expiresAt, externalId?}`; sets status ACTIVE.
+**Completed:** `MarkPostedRequest` model added to `ItemModels.kt`. `ItemRepository.markListingPosted` sets status ACTIVE, postedAt, expiresAt, externalId. `POST /api/v1/listings/{id}/mark-posted` route added to `ItemRoutes.kt`. Frontend: `MarkPostedModal` component (date pickers defaulting to today + required expiry + optional external URL, inline validation), "Mark as Posted" green button added to `ListingTab` header row (only visible when status is DRAFT), replaces itself with ACTIVE badge after success.
 
-### Frontend
-- On each listing tab, show **Mark as Posted** button (visible when status is DRAFT).
-- Clicking opens a modal with:
-  - Posted date (date picker, default today).
-  - Expiry date (date picker).
-  - External listing URL (optional text input).
-- On submit, POST `/api/v1/listings/{id}/mark-posted`; refresh tab; button replaced by status badge "ACTIVE".
-
-### Test
-- Mark a listing as posted; YAML shows `status: ACTIVE`, `posted-at`, `expires-at`.
-- Refresh page; tab shows ACTIVE badge.
+**Notes:**
+- `expiresAt` is required in the modal; empty field shows inline error without making an HTTP call.
+- Modal renders as a fixed overlay; closed on Cancel or successful POST.
 
 ---
 

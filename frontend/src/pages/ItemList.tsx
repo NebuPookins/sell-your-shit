@@ -18,6 +18,12 @@ export function ItemList() {
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
 
+  async function deleteItem(id: string, description: string) {
+    if (!confirm(`Delete "${description.slice(0, 60)}"?`)) return
+    const res = await fetch(`/api/v1/items/${id}`, { method: 'DELETE' })
+    if (res.ok) setItems(prev => prev.filter(i => i.id !== id))
+  }
+
   return (
     <div>
       <h1>Listing Manager</h1>
@@ -31,6 +37,7 @@ export function ItemList() {
               <th>Description</th>
               <th>Listings</th>
               <th>Created</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -43,6 +50,14 @@ export function ItemList() {
                 </td>
                 <td>{item.listings?.length ?? 0}</td>
                 <td>{new Date(item.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <button
+                    onClick={() => deleteItem(item.id, item.rawDescription)}
+                    style={{ color: '#c62828', background: 'none', border: '1px solid #c62828', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 12 }}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
