@@ -98,27 +98,16 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 7 — Dashboard
+## ~~Slice 7 — Dashboard~~ ✅ DONE
 
 **Goal:** Landing page with renewal queue and active listings table.
 
-### Backend
-- `GET /api/v1/dashboard` — reads all item files, computes:
-  - **Renewal queue**: ACTIVE listings where `expiresAt` is past, within 2 days, or days-since-last-price-drop ≥ `checkIntervalDays`.
-  - **Active listings**: all ACTIVE listings sorted by `postedAt` desc.
-  - **Closed items**: items where all listings are SOLD or CANCELLED.
-- Returns three arrays.
+**Completed:** `DashboardEntry` and `DashboardResponse` models added to `ItemModels.kt`. `ItemRepository.getDashboard(decayConfig)` reads all items, computes renewal queue (ACTIVE listings: expired, expiring within 2 days, or decay-due), active listings sorted by `postedAt` desc, and closed items (all non-draft listings SOLD/CANCELLED). `GET /api/v1/dashboard` route added to `Application.kt`. Frontend: `Dashboard.tsx` renders Renewal Queue (cards with thumbnail, title, platform, price, days active, reason badge), All Active Listings (table with photo thumbnail), Recently Sold/Cancelled (collapsible). `App.tsx` routes `/` to Dashboard and `/items` to old ItemList. `types.ts` gains `DashboardEntry` and `DashboardResponse`.
 
-### Frontend
-- `/` — renders three sections:
-  - **Renewal Queue**: cards showing item thumbnail, title, platform, current price, days active, reason flagged.
-  - **All Active Listings**: table with columns from spec.
-  - **Recently Sold/Cancelled**: collapsible section.
-
-### Test
-- Create an item, mark one listing as posted with an expiry yesterday.
-- Dashboard shows that listing in the renewal queue.
-- Active listings table shows other ACTIVE listings.
+**Notes:**
+- `postedAt`/`expiresAt` stored as date-only strings (e.g. "2026-04-25") from MarkPostedModal; `parseInstant()` helper tries `Instant.parse` then falls back to `LocalDate.parse().atStartOfDay(UTC)`.
+- Closed items check only non-DRAFT listings to avoid marking items with no non-draft listings as closed.
+- Dashboard keeps "All Items" button linking to `/items` for browsing DRAFT-only items.
 
 ---
 
