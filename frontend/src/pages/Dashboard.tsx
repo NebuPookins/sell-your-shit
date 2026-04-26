@@ -4,6 +4,21 @@ import type { DashboardEntry, DashboardResponse } from '../types'
 
 const fmtDate = (s: string | null) => s ? s.slice(0, 10) : '—'
 
+const daysUntil = (s: string | null): number | null => {
+  if (!s) return null
+  const diff = new Date(s.slice(0, 10)).getTime() - new Date(new Date().toISOString().slice(0, 10)).getTime()
+  return Math.round(diff / 86400000)
+}
+
+const fmtDaysUntil = (s: string | null): string => {
+  const d = daysUntil(s)
+  if (d === null) return '—'
+  if (d === 0) return 'today'
+  if (d === 1) return '1 day'
+  if (d === -1) return '-1 day'
+  return `${d} days`
+}
+
 const RENEWAL_REASON_LABEL: Record<string, string> = {
   'expired': 'Expired',
   'expiring-soon': 'Expiring Soon',
@@ -87,6 +102,7 @@ export function Dashboard() {
                 <th style={{ padding: '4px 8px' }}>Price</th>
                 <th style={{ padding: '4px 8px' }}>Posted</th>
                 <th style={{ padding: '4px 8px' }}>Expires</th>
+                <th style={{ padding: '4px 8px' }}>Expires in</th>
                 <th style={{ padding: '4px 8px' }}>Days Active</th>
               </tr>
             </thead>
@@ -116,6 +132,9 @@ export function Dashboard() {
                   </td>
                   <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
                     {fmtDate(entry.expiresAt)}
+                  </td>
+                  <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                    {fmtDaysUntil(entry.expiresAt)}
                   </td>
                   <td style={{ padding: '4px 8px' }}>{entry.daysActive ?? '—'}</td>
                 </tr>
