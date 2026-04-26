@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { FieldSpec, Item, Listing, PlatformProfile } from '../types'
 
+function autoResize(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
 function PhotoStrip({ item, onUpdate }: { item: Item; onUpdate: (i: Item) => void }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null)
 
@@ -142,9 +148,10 @@ function FieldInput({
   if (spec.type === 'multiline') {
     return (
       <textarea
+        ref={el => autoResize(el)}
         value={value}
-        style={{ ...base, minHeight: 80, resize: 'vertical', padding: 4 }}
-        onChange={e => onChange(e.target.value)}
+        style={{ ...base, minHeight: 80, resize: 'none', padding: 4, overflow: 'hidden' }}
+        onChange={e => { autoResize(e.target); onChange(e.target.value) }}
         onBlur={e => onBlur(e.target.value)}
       />
     )
@@ -463,9 +470,11 @@ function ListingTab({
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Notes</label>
         <textarea
+          ref={el => autoResize(el)}
           value={notes}
-          style={{ width: '100%', minHeight: 60, padding: 4, boxSizing: 'border-box', resize: 'vertical' }}
+          style={{ width: '100%', minHeight: 60, padding: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden' }}
           onChange={e => {
+            autoResize(e.target)
             notesRef.current = e.target.value
             setNotes(e.target.value)
           }}
