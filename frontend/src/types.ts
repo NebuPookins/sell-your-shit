@@ -10,6 +10,7 @@ export interface PlatformProfile {
   id: string
   label: string
   fields: FieldSpec[]
+  listingDurationDays?: number
 }
 
 export interface PriceHistoryEntry {

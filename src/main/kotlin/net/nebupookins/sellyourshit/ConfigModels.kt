@@ -23,7 +23,8 @@ data class FieldSpec(
 data class PlatformProfile(
     val id: String,
     val label: String,
-    val fields: List<FieldSpec>
+    val fields: List<FieldSpec>,
+    val listingDurationDays: Int? = null
 )
 
 @Serializable

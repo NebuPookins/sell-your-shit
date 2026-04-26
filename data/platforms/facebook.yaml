@@ -1,5 +1,6 @@
 id: FACEBOOK
 label: "Facebook Marketplace"
+listingDurationDays: 7
 fields:
   - name: title
     label: "Title"

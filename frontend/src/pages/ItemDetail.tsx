@@ -173,17 +173,19 @@ function FieldInput({
 
 function MarkPostedModal({
   listingId,
+  initialExternalId = '',
   onClose,
   onPosted,
 }: {
   listingId: string
+  initialExternalId?: string
   onClose: () => void
   onPosted: (l: Listing) => void
 }) {
   const today = new Date().toISOString().slice(0, 10)
   const [postedAt, setPostedAt] = useState(today)
   const [expiresAt, setExpiresAt] = useState('')
-  const [externalId, setExternalId] = useState('')
+  const [externalId, setExternalId] = useState(initialExternalId)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -327,6 +329,28 @@ function ListingTab({
     save(fieldsRef.current, askingPriceRef.current, notesRef.current, postedAtRef.current, expiresAtRef.current, externalIdRef.current)
   }
 
+  async function markPosted(effectivePostedAt: string, effectiveExpiresAt: string, currentExternalId: string) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(`/api/v1/listings/${listing.id}/mark-posted`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postedAt: effectivePostedAt,
+          expiresAt: effectiveExpiresAt,
+          externalId: currentExternalId || null,
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      onUpdate(await res.json())
+    } catch (err) {
+      setSaveError(String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function copyField(value: string) {
     navigator.clipboard.writeText(value)
   }
@@ -348,6 +372,7 @@ function ListingTab({
       {showMarkPosted && (
         <MarkPostedModal
           listingId={listing.id}
+          initialExternalId={externalIdRef.current}
           onClose={() => setShowMarkPosted(false)}
           onPosted={l => { onUpdate(l); setShowMarkPosted(false) }}
         />
@@ -506,7 +531,31 @@ function ListingTab({
           placeholder="https://…"
           style={{ padding: 4, width: '100%', boxSizing: 'border-box' }}
           onChange={e => { externalIdRef.current = e.target.value; setExternalId(e.target.value) }}
-          onBlur={() => saveAll()}
+          onBlur={() => {
+            const url = externalIdRef.current
+            if (listing.status === 'DRAFT' && url) {
+              const today = new Date().toISOString().slice(0, 10)
+              const effectivePostedAt = postedAtRef.current || today
+              const effectiveExpiresAt = expiresAtRef.current ||
+                (platform?.listingDurationDays ? dateFromDays(platform.listingDurationDays) : '')
+              if (!postedAtRef.current) {
+                postedAtRef.current = effectivePostedAt
+                setPostedAt(effectivePostedAt)
+              }
+              if (effectiveExpiresAt) {
+                if (!expiresAtRef.current) {
+                  expiresAtRef.current = effectiveExpiresAt
+                  setExpiresAt(effectiveExpiresAt)
+                  setExpiresAtDays(String(daysFromToday(effectiveExpiresAt)))
+                }
+                markPosted(effectivePostedAt, effectiveExpiresAt, url)
+              } else {
+                setShowMarkPosted(true)
+              }
+            } else {
+              saveAll()
+            }
+          }}
         />
       </div>
     </div>

@@ -1,5 +1,6 @@
 id: CRAIGSLIST
 label: "Craigslist"
+listingDurationDays: 45
 fields:
   - name: title
     label: "Title"

@@ -1,5 +1,6 @@
 id: KIJIJI
 label: "Kijiji"
+listingDurationDays: 60
 fields:
   - name: title
     label: "Title"
