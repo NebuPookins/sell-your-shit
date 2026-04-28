@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Item, PlatformProfile } from '../types'
 
+const STORAGE_KEY = 'selectedPlatforms'
+
 export function NewItem() {
   const navigate = useNavigate()
   const [description, setDescription] = useState('')
@@ -18,6 +20,17 @@ export function NewItem() {
       .then(r => r.json())
       .then((data: PlatformProfile[]) => {
         setPlatforms(data)
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          try {
+            const parsed: string[] = JSON.parse(saved)
+            const valid = parsed.filter(id => data.some(p => p.id === id))
+            if (valid.length > 0) {
+              setSelectedPlatforms(new Set(valid))
+              return
+            }
+          } catch { /* ignore bad data */ }
+        }
         setSelectedPlatforms(new Set(data.map(p => p.id)))
       })
       .catch(() => {/* non-fatal, platforms stay empty */})
@@ -43,6 +56,7 @@ export function NewItem() {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next)))
       return next
     })
   }
