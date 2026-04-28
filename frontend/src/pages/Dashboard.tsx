@@ -1,3 +1,4 @@
+import { LocalDate, ChronoUnit } from '@js-joda/core'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { DashboardEntry, DashboardResponse } from '../types'
@@ -6,8 +7,7 @@ const fmtDate = (s: string | null) => s ? s.slice(0, 10) : '—'
 
 const daysUntil = (s: string | null): number | null => {
   if (!s) return null
-  const diff = new Date(s.slice(0, 10)).getTime() - new Date(new Date().toISOString().slice(0, 10)).getTime()
-  return Math.round(diff / 86400000)
+  return LocalDate.parse(s.slice(0, 10)).until(LocalDate.now(), ChronoUnit.DAYS)
 }
 
 const fmtDaysUntil = (s: string | null): string => {

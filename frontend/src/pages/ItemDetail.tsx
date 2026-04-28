@@ -1,3 +1,4 @@
+import { LocalDate, ChronoUnit } from '@js-joda/core'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { FieldSpec, Item, Listing, PlatformProfile } from '../types'
@@ -253,17 +254,11 @@ function MarkPostedModal({
 }
 
 function daysFromToday(dateStr: string): number {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const target = new Date(y, m - 1, d)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Math.round((target.getTime() - today.getTime()) / 86400000)
+  return LocalDate.parse(dateStr).until(LocalDate.now(), ChronoUnit.DAYS)
 }
 
 function dateFromDays(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  return LocalDate.now().plusDays(days).toString()
 }
 
 function ListingTab({
