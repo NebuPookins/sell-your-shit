@@ -147,7 +147,7 @@ function RenewalCard({
         </p>
       ) : (
         <p style={{ margin: '8px 0 4px', fontWeight: 600 }}>
-          <Link to={`/items/${entry.itemId}`}>{(entry.title ?? entry.itemDescription).slice(0, 50)}</Link>
+          <Link to={`/items/${entry.itemId}?listing=${entry.listingId}`}>{(entry.title ?? entry.itemDescription).slice(0, 50)}</Link>
         </p>
       )}
       <p style={{ margin: '2px 0', fontSize: 13 }}>{entry.platformId}</p>

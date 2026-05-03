@@ -1,7 +1,7 @@
 import { LocalDate } from '@js-joda/core'
 import { daysUntil, dateFromDays } from '../dateUtils'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import type { FieldSpec, Item, Listing, PlatformProfile } from '../types'
 
 function autoResize(el: HTMLTextAreaElement | null) {
@@ -561,6 +561,7 @@ function ListingTab({
 
 export function ItemDetail() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const [item, setItem] = useState<Item | null>(null)
   const [platforms, setPlatforms] = useState<PlatformProfile[]>([])
   const [activeTab, setActiveTab] = useState(0)
@@ -578,10 +579,15 @@ export function ItemDetail() {
       .then(([itemData, platformsData]) => {
         setItem(itemData)
         setPlatforms(platformsData)
+        const targetListingId = searchParams.get('listing')
+        if (targetListingId) {
+          const idx = itemData.listings?.findIndex((l: Listing) => l.id === targetListingId) ?? -1
+          if (idx >= 0) setActiveTab(idx)
+        }
       })
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, searchParams])
 
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: 'red' }}>Error: {error}</p>
