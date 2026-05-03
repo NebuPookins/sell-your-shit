@@ -2,17 +2,17 @@ id: CRAIGSLIST
 label: "Craigslist"
 listingDurationDays: 45
 fields:
+  - name: category
+    label: "Category"
+    type: text
   - name: title
     label: "Title"
     type: text
     max-length: 70
-  - name: category
-    label: "Category"
-    type: text
+  - name: description
+    label: "Description"
+    type: multiline
   - name: condition
     label: "Condition"
     type: enum
     values: [New, "Like New", Good, Fair, Poor]
-  - name: description
-    label: "Description"
-    type: multiline

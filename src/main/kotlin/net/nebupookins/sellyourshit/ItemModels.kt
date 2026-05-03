@@ -84,7 +84,15 @@ data class DashboardEntry(
     val postedAt: String?,
     val expiresAt: String?,
     val daysActive: Int?,
-    val renewalReason: String?
+    val renewalReason: String?,
+    val externalId: String? = null,
+    val suggestedDropPrice: Double? = null,
+    val dropPercent: Double? = null
+)
+
+@Serializable
+data class ApplyPriceDropRequest(
+    val newPrice: Double
 )
 
 @Serializable

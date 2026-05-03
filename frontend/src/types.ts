@@ -56,6 +56,9 @@ export interface DashboardEntry {
   expiresAt: string | null
   daysActive: number | null
   renewalReason: string | null
+  externalId?: string | null
+  suggestedDropPrice?: number | null
+  dropPercent?: number | null
 }
 
 export interface DashboardResponse {

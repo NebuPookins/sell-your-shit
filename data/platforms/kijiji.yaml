@@ -9,10 +9,10 @@ fields:
   - name: category
     label: "Category"
     type: text
+  - name: description
+    label: "Description"
+    type: multiline
   - name: condition
     label: "Condition"
     type: enum
     values: [New, "Like New", Good, Fair, "Parts Only"]
-  - name: description
-    label: "Description"
-    type: multiline

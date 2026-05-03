@@ -23,6 +23,14 @@ fun Route.itemRoutes(
             else call.respond(listing)
         }
 
+        post("/{listingId}/apply-price-drop") {
+            val listingId = call.parameters["listingId"]!!
+            val request = call.receive<ApplyPriceDropRequest>()
+            val listing = itemRepo.applyPriceDrop(listingId, request.newPrice)
+            if (listing == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Listing not found"))
+            else call.respond(listing)
+        }
+
         post("/{listingId}/mark-posted") {
             val listingId = call.parameters["listingId"]!!
             val request = call.receive<MarkPostedRequest>()
