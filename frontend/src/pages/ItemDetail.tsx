@@ -1,4 +1,5 @@
-import { LocalDate, ChronoUnit } from '@js-joda/core'
+import { LocalDate } from '@js-joda/core'
+import { daysUntil, dateFromDays } from '../dateUtils'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { FieldSpec, Item, Listing, PlatformProfile } from '../types'
@@ -253,14 +254,6 @@ function MarkPostedModal({
   )
 }
 
-function daysFromToday(dateStr: string): number {
-  return LocalDate.parse(dateStr).until(LocalDate.now(), ChronoUnit.DAYS)
-}
-
-function dateFromDays(days: number): string {
-  return LocalDate.now().plusDays(days).toString()
-}
-
 function ListingTab({
   listing,
   platform,
@@ -275,7 +268,7 @@ function ListingTab({
   const [notes, setNotes] = useState(listing.notes)
   const [postedAt, setPostedAt] = useState(listing.postedAt ?? '')
   const [expiresAt, setExpiresAt] = useState(listing.expiresAt ?? '')
-  const [expiresAtDays, setExpiresAtDays] = useState(listing.expiresAt ? String(daysFromToday(listing.expiresAt)) : '')
+  const [expiresAtDays, setExpiresAtDays] = useState(listing.expiresAt ? String(daysUntil(LocalDate.parse(listing.expiresAt.slice(0, 10)))) : '')
   const [externalId, setExternalId] = useState(listing.externalId ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -503,7 +496,7 @@ function ListingTab({
               const v = e.target.value
               expiresAtRef.current = v
               setExpiresAt(v)
-              setExpiresAtDays(v ? String(daysFromToday(v)) : '')
+              setExpiresAtDays(v ? String(daysUntil(LocalDate.parse(v.slice(0, 10)))) : '')
             }}
             onBlur={() => saveAll()}
           />
@@ -550,7 +543,7 @@ function ListingTab({
                 if (!expiresAtRef.current) {
                   expiresAtRef.current = effectiveExpiresAt
                   setExpiresAt(effectiveExpiresAt)
-                  setExpiresAtDays(String(daysFromToday(effectiveExpiresAt)))
+                  setExpiresAtDays(String(daysUntil(LocalDate.parse(effectiveExpiresAt.slice(0, 10)))))
                 }
                 markPosted(effectivePostedAt, effectiveExpiresAt, url)
               } else {

@@ -1,18 +1,14 @@
-import { LocalDate, ChronoUnit } from '@js-joda/core'
+import { LocalDate } from '@js-joda/core'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { daysUntil } from '../dateUtils'
 import type { DashboardEntry, DashboardResponse } from '../types'
 
 const fmtDate = (s: string | null) => s ? s.slice(0, 10) : '—'
 
-const daysUntil = (s: string | null): number | null => {
-  if (!s) return null
-  return LocalDate.parse(s.slice(0, 10)).until(LocalDate.now(), ChronoUnit.DAYS)
-}
-
 const fmtDaysUntil = (s: string | null): string => {
-  const d = daysUntil(s)
-  if (d === null) return '—'
+  if (!s) return '—'
+  const d = daysUntil(LocalDate.parse(s.slice(0, 10)))
   if (d === 0) return 'today'
   if (d === 1) return '1 day'
   if (d === -1) return '-1 day'
