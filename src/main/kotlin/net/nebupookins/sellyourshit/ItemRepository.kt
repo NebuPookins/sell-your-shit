@@ -200,6 +200,24 @@ class ItemRepository(private val dataDir: File) {
         return null
     }
 
+    fun markListingStatus(listingId: String, status: ListingStatus): Listing? {
+        val items = listItems()
+        for (item in items) {
+            val idx = item.listings.indexOfFirst { it.id == listingId }
+            if (idx >= 0) {
+                val now = Instant.now().toString()
+                val updated = item.listings[idx].copy(
+                    status = status,
+                    updatedAt = now
+                )
+                val updatedListings = item.listings.toMutableList().also { it[idx] = updated }
+                saveItem(item.copy(listings = updatedListings, updatedAt = now))
+                return updated
+            }
+        }
+        return null
+    }
+
     fun markListingPosted(listingId: String, postedAt: String, expiresAt: String, externalId: String?): Listing? {
         val items = listItems()
         for (item in items) {

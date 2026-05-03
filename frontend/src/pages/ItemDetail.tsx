@@ -392,6 +392,56 @@ function ListingTab({
             Mark as Posted
           </button>
         )}
+        {(listing.status === 'ACTIVE' || listing.status === 'DRAFT') && (
+          <>
+            <button
+              onClick={async () => {
+                if (!confirm('Mark this listing as sold?')) return
+                setSaving(true)
+                setSaveError(null)
+                try {
+                  const res = await fetch(`/api/v1/listings/${listing.id}/mark-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'SOLD' }),
+                  })
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                  onUpdate(await res.json())
+                } catch (err) {
+                  setSaveError(String(err))
+                } finally {
+                  setSaving(false)
+                }
+              }}
+              style={{ background: '#1565c0', color: '#fff', border: 'none', padding: '4px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+            >
+              Mark as Sold
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirm('Mark this listing as cancelled/no longer listed?')) return
+                setSaving(true)
+                setSaveError(null)
+                try {
+                  const res = await fetch(`/api/v1/listings/${listing.id}/mark-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'CANCELLED' }),
+                  })
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                  onUpdate(await res.json())
+                } catch (err) {
+                  setSaveError(String(err))
+                } finally {
+                  setSaving(false)
+                }
+              }}
+              style={{ background: '#757575', color: '#fff', border: 'none', padding: '4px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+            >
+              Mark as Cancelled
+            </button>
+          </>
+        )}
         {saving && <span style={{ color: '#888', fontSize: 13 }}>Saving…</span>}
         {saveError && <span style={{ color: 'red', fontSize: 13 }}>{saveError}</span>}
       </div>

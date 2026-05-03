@@ -96,6 +96,11 @@ data class ApplyPriceDropRequest(
 )
 
 @Serializable
+data class MarkListingStatusRequest(
+    val status: ListingStatus
+)
+
+@Serializable
 data class DashboardResponse(
     val renewalQueue: List<DashboardEntry>,
     val activeListings: List<DashboardEntry>,
