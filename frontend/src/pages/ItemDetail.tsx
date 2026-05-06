@@ -1,5 +1,5 @@
-import { LocalDate } from '@js-joda/core'
-import { daysUntil, dateFromDays } from '../dateUtils'
+import { dateFromDays } from '../dateUtils'
+import { ExpiryDateInput } from '../ExpiryDateInput'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import type { FieldSpec, Item, Listing, PlatformProfile } from '../types'
@@ -268,7 +268,6 @@ function ListingTab({
   const [notes, setNotes] = useState(listing.notes)
   const [postedAt, setPostedAt] = useState(listing.postedAt ?? '')
   const [expiresAt, setExpiresAt] = useState(listing.expiresAt ?? '')
-  const [expiresAtDays, setExpiresAtDays] = useState(listing.expiresAt ? String(daysUntil(LocalDate.parse(listing.expiresAt.slice(0, 10)))) : '')
   const [externalId, setExternalId] = useState(listing.externalId ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -503,6 +502,22 @@ function ListingTab({
           />
           <button onClick={() => copyField(askingPrice != null ? String(askingPrice) : '')}>Copy</button>
         </div>
+        {(listing.priceHistory?.length ?? 0) > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Price History</label>
+            <div style={{ fontSize: 12 }}>
+              {listing.priceHistory.map((entry, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, padding: '3px 0', borderBottom: i < listing.priceHistory.length - 1 ? '1px solid #eee' : 'none' }}>
+                  <span style={{ color: '#555', minWidth: 80 }}>{entry.date.slice(0, 10)}</span>
+                  <span style={{ fontWeight: entry.reason === 'decay' || entry.reason === 'initial' ? 600 : 400 }}>
+                    ${entry.price.toFixed(2)}
+                  </span>
+                  <span style={{ color: '#888' }}>{entry.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: 14 }}>
@@ -535,40 +550,7 @@ function ListingTab({
         />
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Expiry date</label>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            type="date"
-            value={expiresAt}
-            style={{ padding: 4 }}
-            onChange={e => {
-              const v = e.target.value
-              expiresAtRef.current = v
-              setExpiresAt(v)
-              setExpiresAtDays(v ? String(daysUntil(LocalDate.parse(v.slice(0, 10)))) : '')
-            }}
-            onBlur={() => saveAll()}
-          />
-          <input
-            type="number"
-            value={expiresAtDays}
-            placeholder="days from today"
-            style={{ width: 60, padding: 4 }}
-            onChange={e => {
-              setExpiresAtDays(e.target.value)
-              const days = parseInt(e.target.value, 10)
-              if (!isNaN(days)) {
-                const date = dateFromDays(days)
-                expiresAtRef.current = date
-                setExpiresAt(date)
-              }
-            }}
-            onBlur={() => saveAll()}
-          />
-          <span style={{ fontSize: 12, color: '#888' }}>days from today</span>
-        </div>
-      </div>
+      <ExpiryDateInput value={expiresAt} onChange={v => { expiresAtRef.current = v; setExpiresAt(v) }} />
 
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>External URL</label>
@@ -593,7 +575,6 @@ function ListingTab({
                 if (!expiresAtRef.current) {
                   expiresAtRef.current = effectiveExpiresAt
                   setExpiresAt(effectiveExpiresAt)
-                  setExpiresAtDays(String(daysUntil(LocalDate.parse(effectiveExpiresAt.slice(0, 10)))))
                 }
                 markPosted(effectivePostedAt, effectiveExpiresAt, url)
               } else {

@@ -61,7 +61,7 @@ fun Application.module(settings: AppSettings, dataDir: File) {
             call.respond(itemRepo.getDashboard(settings.config.decay))
         }
 
-        itemRoutes(itemRepo, claudeClient, settings.platforms)
+        itemRoutes(itemRepo, claudeClient, settings.platforms, settings.config.decay)
 
         get("/photos/{itemId}/{filename}") {
             val itemId = call.parameters["itemId"]!!

@@ -218,17 +218,52 @@ class ItemRepository(private val dataDir: File) {
         return null
     }
 
+    fun renewListing(listingId: String, newPrice: Double?, dropPercent: Double, newExpiresAt: String? = null): Listing? {
+        val items = listItems()
+        for (item in items) {
+            val idx = item.listings.indexOfFirst { it.id == listingId }
+            if (idx >= 0) {
+                val now = Instant.now().toString()
+                val existing = item.listings[idx]
+                val oldPrice = existing.askingPrice
+                val effectiveNewPrice = newPrice ?: oldPrice?.let {
+                    Math.round(it * (1.0 - dropPercent) * 100.0) / 100.0
+                } ?: return null
+
+                val updated = existing.copy(
+                    askingPrice = effectiveNewPrice,
+                    expiresAt = newExpiresAt ?: existing.expiresAt,
+                    priceHistory = existing.priceHistory + PriceHistoryEntry(
+                        price = oldPrice ?: effectiveNewPrice,
+                        reason = "decay",
+                        date = now
+                    ),
+                    updatedAt = now
+                )
+                val updatedListings = item.listings.toMutableList().also { it[idx] = updated }
+                saveItem(item.copy(listings = updatedListings, updatedAt = now))
+                return updated
+            }
+        }
+        return null
+    }
+
     fun markListingPosted(listingId: String, postedAt: String, expiresAt: String, externalId: String?): Listing? {
         val items = listItems()
         for (item in items) {
             val idx = item.listings.indexOfFirst { it.id == listingId }
             if (idx >= 0) {
                 val now = Instant.now().toString()
-                val updated = item.listings[idx].copy(
+                val existing = item.listings[idx]
+                val priceEntry = existing.askingPrice?.let {
+                    PriceHistoryEntry(price = it, reason = "initial", date = postedAt)
+                }
+                val updated = existing.copy(
                     status = ListingStatus.ACTIVE,
                     postedAt = postedAt,
                     expiresAt = expiresAt,
                     externalId = externalId,
+                    priceHistory = if (priceEntry != null) existing.priceHistory + priceEntry else existing.priceHistory,
                     updatedAt = now
                 )
                 val updatedListings = item.listings.toMutableList().also { it[idx] = updated }
@@ -268,20 +303,19 @@ class ItemRepository(private val dataDir: File) {
                 val expiresAtInstant = listing.expiresAt?.let { parseInstant(it) }
                 val daysActive = postedAtInstant?.let { ChronoUnit.DAYS.between(it, now).toInt() }
 
-                val renewalReason = when {
-                    expiresAtInstant != null && expiresAtInstant.isBefore(now) -> "expired"
-                    else -> {
-                        val lastDecayDate = listing.priceHistory
-                            .lastOrNull { it.reason == "decay" }?.date
-                            ?.let { parseInstant(it) }
-                        val reference = lastDecayDate ?: postedAtInstant
-                        if (reference != null && ChronoUnit.DAYS.between(reference, now) >= decayConfig.checkIntervalDays)
-                            "decay-due"
-                        else null
-                    }
+                val isExpired = expiresAtInstant != null && expiresAtInstant.isBefore(now)
+                val lastDecayDate = listing.priceHistory
+                    .lastOrNull { it.reason == "decay" }?.date
+                    ?.let { parseInstant(it) }
+                val decayReference = lastDecayDate ?: postedAtInstant
+                val isDecayDue = decayReference != null && ChronoUnit.DAYS.between(decayReference, now) >= decayConfig.checkIntervalDays
+
+                val reasons = buildList {
+                    if (isExpired) add("expired")
+                    if (isDecayDue) add("decay-due")
                 }
 
-                val suggestedDropPrice = if (renewalReason == "decay-due" && listing.askingPrice != null) {
+                val suggestedDropPrice = if (isDecayDue && listing.askingPrice != null) {
                     (listing.askingPrice * (1.0 - decayConfig.dropPercent)).let { Math.round(it * 100.0) / 100.0 }
                 } else null
 
@@ -296,14 +330,14 @@ class ItemRepository(private val dataDir: File) {
                     postedAt = listing.postedAt,
                     expiresAt = listing.expiresAt,
                     daysActive = daysActive,
-                    renewalReason = renewalReason,
+                    renewalReasons = reasons,
                     externalId = listing.externalId,
                     suggestedDropPrice = suggestedDropPrice,
-                    dropPercent = if (renewalReason == "decay-due") decayConfig.dropPercent else null
+                    dropPercent = if (isDecayDue) decayConfig.dropPercent else null
                 )
 
                 activeListings.add(entry)
-                if (renewalReason != null) renewalQueue.add(entry)
+                if (reasons.isNotEmpty()) renewalQueue.add(entry)
             }
         }
 

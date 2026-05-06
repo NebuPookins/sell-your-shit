@@ -111,23 +111,16 @@ Vertical slices ordered so each step is independently runnable and testable.
 
 ---
 
-## Slice 8 — Renewal flow
+## ~~Slice 8 — Renewal flow~~ ✅ DONE
 
 **Goal:** User can renew a listing with a decayed price from the dashboard.
 
-### Backend
-- `POST /api/v1/listings/{id}/renew` — accepts optional `{newPrice}`; otherwise calculates `currentPrice * (1 - dropPercent)`, floor at `minimumPrice`; updates `askingPrice`; appends to `priceHistory` with reason "decay".
+**Completed:** `POST /api/v1/listings/{id}/renew` endpoint added to `ItemRoutes.kt` with `RenewRequest` model, `DecayConfig` passed through route wiring. `ItemRepository.renewListing` accepts optional `newPrice`, calculates from `dropPercent` if omitted, appends `priceHistory` with reason "renew". Frontend `Dashboard.tsx` replaces old `PriceDropModal` with unified `RenewModal`: shows price-breakdown for decay-due items, editable price input for all, and a "Re-post Now" button on success that links to the item detail page with the listing tab pre-selected. All renewal queue cards get a **Renew** button. Decay config loaded alongside dashboard data via `Promise.all`.
 
-### Frontend
-- Renewal Queue cards get a **Renew** button.
-- Clicking opens a modal: "Suggested price: $X" (editable input) + Confirm button.
-- On confirm, POST `/api/v1/listings/{id}/renew`; refresh dashboard.
-- After renewing, user is prompted to copy and re-post — the Mark as Posted flow from Slice 6 handles the reset.
-
-### Test
-- From dashboard, click Renew on a queued listing.
-- Modal shows calculated price.
-- Confirm; YAML shows updated `askingPrice` and new entry in `priceHistory`.
+**Notes:**
+- Existing `apply-price-drop` endpoint kept for backward compatibility; `/renew` endpoint is the canonical renewal path now.
+- Renewal price defaults to `suggestedDropPrice` (for decay-due) or `askingPrice` (for expired); user can override.
+- Modal shows two states: price input (with optional decay calculation breakdown) and success/re-post prompt.
 
 ---
 

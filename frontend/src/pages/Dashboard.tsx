@@ -2,6 +2,7 @@ import { LocalDate } from '@js-joda/core'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { daysUntil } from '../dateUtils'
+import { ExpiryDateInput } from '../ExpiryDateInput'
 import type { DashboardEntry, DashboardResponse } from '../types'
 
 const fmtDate = (s: string | null) => s ? s.slice(0, 10) : '—'
@@ -20,30 +21,51 @@ const RENEWAL_REASON_LABEL: Record<string, string> = {
   'decay-due': 'Price Drop Due',
 }
 
-function PriceDropModal({
+const OVERLAY: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+}
+const MODAL: React.CSSProperties = {
+  background: '#fff', borderRadius: 8, padding: 28, minWidth: 360,
+  boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+}
+
+function RenewModal({
   entry,
+  dropPercent,
   onClose,
-  onApplied,
 }: {
   entry: DashboardEntry
+  dropPercent: number
   onClose: () => void
-  onApplied: () => void
 }) {
+  const suggestedPrice = entry.suggestedDropPrice ?? entry.askingPrice
+  const [newPrice, setNewPrice] = useState(suggestedPrice ? String(suggestedPrice) : '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const pctLabel = Math.round(dropPercent * 100)
+  const isDecayDue = entry.renewalReasons.includes('decay-due')
+  const isExpired = entry.renewalReasons.includes('expired')
+  const [expiresAt, setExpiresAt] = useState(entry.expiresAt ?? '')
 
-  async function applyDrop() {
-    if (entry.suggestedDropPrice == null) return
+  async function handleRenew() {
+    const parsed = parseFloat(newPrice)
+    if (isNaN(parsed) || parsed <= 0) {
+      setError('Please enter a valid price')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`/api/v1/listings/${entry.listingId}/apply-price-drop`, {
+      const body: Record<string, unknown> = { newPrice: parsed }
+      if (isExpired && expiresAt) body.expiresAt = expiresAt
+      const res = await fetch(`/api/v1/listings/${entry.listingId}/renew`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPrice: entry.suggestedDropPrice }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      onApplied()
+      onClose()
     } catch (err) {
       setError(String(err))
     } finally {
@@ -51,40 +73,14 @@ function PriceDropModal({
     }
   }
 
-  const dropPercent = entry.dropPercent != null ? Math.round(entry.dropPercent * 100) : 10
-
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 8, padding: 28, minWidth: 360,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: 16 }}>Price Drop Due</h3>
-        <p style={{ marginBottom: 16, lineHeight: 1.5 }}>
-          This listing has been active for <strong>{entry.daysActive} days</strong>{' '}
-          on <strong>{entry.platformId}</strong> without a price change.
-        </p>
-        <div style={{ background: '#f5f5f5', borderRadius: 6, padding: 16, marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span>Current price:</span>
-            <span style={{ fontWeight: 600 }}>${entry.askingPrice?.toFixed(2)}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span>Suggested drop ({dropPercent}%):</span>
-            <span style={{ color: '#c62828', fontWeight: 600 }}>
-              -${(entry.askingPrice! - entry.suggestedDropPrice!).toFixed(2)}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #ddd', paddingTop: 8 }}>
-            <span style={{ fontWeight: 600 }}>Suggested new price:</span>
-            <span style={{ color: '#2e7d32', fontWeight: 700, fontSize: 18 }}>
-              ${entry.suggestedDropPrice?.toFixed(2)}
-            </span>
-          </div>
-        </div>
+    <div style={OVERLAY}>
+      <div style={MODAL}>
+        <h3 style={{ marginTop: 0, marginBottom: 8 }}>
+          Renew — {(entry.title ?? entry.itemDescription).slice(0, 50)}
+        </h3>
+        <p style={{ marginBottom: 8, color: '#555', fontSize: 13 }}>{entry.platformId}</p>
+
         {entry.externalId && (
           <p style={{ marginBottom: 16 }}>
             <a href={entry.externalId} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>
@@ -92,10 +88,49 @@ function PriceDropModal({
             </a>
           </p>
         )}
+
+        {isDecayDue && entry.askingPrice != null && (
+          <div style={{ background: '#f5f5f5', borderRadius: 6, padding: 16, marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>Current price:</span>
+              <span style={{ fontWeight: 600 }}>${entry.askingPrice.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>Suggested drop ({pctLabel}%):</span>
+              <span style={{ color: '#c62828', fontWeight: 600 }}>
+                -${(entry.askingPrice - parseFloat(newPrice || '0')).toFixed(2)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #ddd', paddingTop: 8 }}>
+              <span style={{ fontWeight: 600 }}>Suggested new price:</span>
+              <span style={{ color: '#2e7d32', fontWeight: 700, fontSize: 18 }}>
+                ${parseFloat(newPrice || '0').toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+            New price
+          </label>
+          <input
+            type="number"
+            value={newPrice}
+            onChange={e => setNewPrice(e.target.value)}
+            style={{ padding: 4, width: 120, fontSize: 16 }}
+          />
+        </div>
+
+        {isExpired && (
+          <ExpiryDateInput value={expiresAt} onChange={setExpiresAt} label="New expiry date" />
+        )}
+
         {error && <div style={{ color: 'red', fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onClose} disabled={submitting}>Cancel</button>
-          <Link to={`/items/${entry.itemId}`}>
+          <Link to={`/items/${entry.itemId}?listing=${entry.listingId}`}>
             <button
               style={{ background: 'none', border: '1px solid #888', cursor: 'pointer' }}
               disabled={submitting}
@@ -104,14 +139,11 @@ function PriceDropModal({
             </button>
           </Link>
           <button
-            onClick={applyDrop}
+            onClick={handleRenew}
             disabled={submitting}
-            style={{
-              background: '#2e7d32', color: '#fff', border: 'none',
-              padding: '6px 18px', borderRadius: 4, cursor: 'pointer',
-            }}
+            style={{ background: '#f57c00', color: '#fff', border: 'none', padding: '6px 18px', borderRadius: 4, cursor: 'pointer' }}
           >
-            {submitting ? 'Applying…' : 'Apply Price Drop'}
+            {submitting ? 'Renewing…' : 'Renew'}
           </button>
         </div>
       </div>
@@ -121,10 +153,10 @@ function PriceDropModal({
 
 function RenewalCard({
   entry,
-  onApplyDrop,
+  onRenew,
 }: {
   entry: DashboardEntry
-  onApplyDrop: (e: DashboardEntry) => void
+  onRenew: (e: DashboardEntry) => void
 }) {
   return (
     <div style={{ border: '1px solid #e57373', borderRadius: 8, padding: 12, width: 220 }}>
@@ -135,21 +167,11 @@ function RenewalCard({
           alt=""
         />
       )}
-      {entry.renewalReason === 'decay-due' ? (
-        <p style={{ margin: '8px 0 4px', fontWeight: 600 }}>
-          <a
-            href="#"
-            onClick={e => { e.preventDefault(); onApplyDrop(entry) }}
-            style={{ color: 'inherit', textDecoration: 'none' }}
-          >
-            {(entry.title ?? entry.itemDescription).slice(0, 50)}
-          </a>
-        </p>
-      ) : (
-        <p style={{ margin: '8px 0 4px', fontWeight: 600 }}>
-          <Link to={`/items/${entry.itemId}?listing=${entry.listingId}`}>{(entry.title ?? entry.itemDescription).slice(0, 50)}</Link>
-        </p>
-      )}
+      <p style={{ margin: '8px 0 4px', fontWeight: 600 }}>
+        <Link to={`/items/${entry.itemId}?listing=${entry.listingId}`}>
+          {(entry.title ?? entry.itemDescription).slice(0, 50)}
+        </Link>
+      </p>
       <p style={{ margin: '2px 0', fontSize: 13 }}>{entry.platformId}</p>
       {entry.askingPrice != null && (
         <p style={{ margin: '2px 0', fontSize: 13 }}>${entry.askingPrice.toFixed(2)}</p>
@@ -157,9 +179,22 @@ function RenewalCard({
       {entry.daysActive != null && (
         <p style={{ margin: '2px 0', fontSize: 13 }}>{entry.daysActive} days active</p>
       )}
-      <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c62828', fontWeight: 600 }}>
-        {RENEWAL_REASON_LABEL[entry.renewalReason ?? ''] ?? entry.renewalReason}
-      </p>
+      <div style={{ margin: '6px 0 0', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {entry.renewalReasons.map(r => (
+          <span key={r} style={{ fontSize: 12, color: '#c62828', fontWeight: 600 }}>
+            {RENEWAL_REASON_LABEL[r] ?? r}
+          </span>
+        ))}
+      </div>
+      <button
+        onClick={() => onRenew(entry)}
+        style={{
+          marginTop: 8, width: '100%', background: '#f57c00', color: '#fff',
+          border: 'none', padding: '6px 0', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+        }}
+      >
+        Renew
+      </button>
     </div>
   )
 }
@@ -168,12 +203,18 @@ export function Dashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closedOpen, setClosedOpen] = useState(false)
-  const [priceDropEntry, setPriceDropEntry] = useState<DashboardEntry | null>(null)
+  const [renewEntry, setRenewEntry] = useState<DashboardEntry | null>(null)
+  const [dropPercent, setDropPercent] = useState(0.1)
 
   function load() {
-    fetch('/api/v1/dashboard')
-      .then(r => r.json())
-      .then(setData)
+    Promise.all([
+      fetch('/api/v1/dashboard').then(r => r.json()),
+      fetch('/api/v1/config/decay').then(r => r.json()),
+    ])
+      .then(([dashboardData, decayData]) => {
+        setData(dashboardData)
+        if (decayData['drop-percent'] != null) setDropPercent(decayData['drop-percent'])
+      })
       .catch(e => setError(String(e)))
   }
 
@@ -184,11 +225,11 @@ export function Dashboard() {
 
   return (
     <div style={{ padding: 16 }}>
-      {priceDropEntry && (
-        <PriceDropModal
-          entry={priceDropEntry}
-          onClose={() => setPriceDropEntry(null)}
-          onApplied={() => { setPriceDropEntry(null); load() }}
+      {renewEntry && (
+        <RenewModal
+          entry={renewEntry}
+          dropPercent={dropPercent}
+          onClose={() => { setRenewEntry(null); load() }}
         />
       )}
 
@@ -205,7 +246,7 @@ export function Dashboard() {
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             {data.renewalQueue.map(entry => (
-              <RenewalCard key={entry.listingId} entry={entry} onApplyDrop={setPriceDropEntry} />
+              <RenewalCard key={entry.listingId} entry={entry} onRenew={setRenewEntry} />
             ))}
           </div>
         )}

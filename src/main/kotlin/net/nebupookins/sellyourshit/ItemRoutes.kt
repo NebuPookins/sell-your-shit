@@ -12,9 +12,18 @@ private val logger = LoggerFactory.getLogger("ItemRoutes")
 fun Route.itemRoutes(
     itemRepo: ItemRepository,
     claudeClient: ClaudeClient,
-    platforms: List<PlatformProfile>
+    platforms: List<PlatformProfile>,
+    decayConfig: DecayConfig
 ) {
     route("/api/v1/listings") {
+        post("/{listingId}/renew") {
+            val listingId = call.parameters["listingId"]!!
+            val request = call.receive<RenewRequest>()
+            val listing = itemRepo.renewListing(listingId, request.newPrice, decayConfig.dropPercent, request.expiresAt)
+            if (listing == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Listing not found"))
+            else call.respond(listing)
+        }
+
         patch("/{listingId}") {
             val listingId = call.parameters["listingId"]!!
             val request = call.receive<PatchListingRequest>()
