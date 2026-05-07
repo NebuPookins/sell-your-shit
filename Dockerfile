@@ -1,29 +1,25 @@
-# ---- Build stage ----
-FROM gradle:8-jdk23 AS builder
-
+# ---- Frontend build stage ----
+FROM node:22 AS frontend-builder
 WORKDIR /app
+COPY frontend/ ./
+RUN npm ci && npm run build
 
-# Install Node.js for the Vite/React frontend build
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+# ---- Backend build stage ----
+FROM gradle:8-jdk23 AS backend-builder
+WORKDIR /app
 
 # Copy dependency descriptors first for layer caching
 COPY build.gradle.kts settings.gradle.kts ./
-COPY frontend/package.json frontend/package-lock.json ./
-
-# Download Gradle dependencies (cached unless build.gradle.kts changes)
 RUN gradle build --no-daemon || true
 
-# Install npm dependencies
-WORKDIR /app/frontend
-RUN npm ci
-WORKDIR /app
+# Copy source code
+COPY src/ src/
 
-# Copy all sources
-COPY . .
+# Copy the pre-built frontend into static resources before running Gradle.
+# The npmBuild task onlyIf check will see index.html already exists and skip.
+COPY --from=frontend-builder /app/dist src/main/resources/static/
 
-# Build the frontend then the backend (processResources triggers copyFrontend)
+# Build the backend distribution
 RUN gradle installDist --no-daemon
 
 # ---- Runtime stage ----
@@ -35,9 +31,8 @@ WORKDIR /app
 RUN mkdir -p /app/data/config /app/data/items /app/data/photos /app/data/platforms
 
 # Copy the installed distribution from the builder
-COPY --from=builder /app/build/install/sell-your-shit/ .
+COPY --from=backend-builder /app/build/install/sell-your-shit/ .
 
-# The app reads the PORT env var (set by Coolify) — required, no default.
 EXPOSE 45966
 
 VOLUME ["/app/data"]

@@ -47,6 +47,10 @@ application {
 
 // Build frontend and copy output into static resources
 tasks.register<Exec>("npmBuild") {
+    onlyIf {
+        // Skip when frontend is already pre-built (Docker multi-stage build)
+        !file("src/main/resources/static/index.html").exists()
+    }
     workingDir = file("frontend")
     commandLine("npm", "run", "build")
     inputs.dir("frontend/src")
