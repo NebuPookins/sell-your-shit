@@ -16,18 +16,24 @@ import java.io.File
 
 fun main() {
     val dataDir = File("data")
-    val settings = loadConfig(dataDir)
+    loadDotEnv()
+    val settings = loadConfigOrThrow(dataDir)
+    val anthropicApiKey = loadAnthropicApiKey()
 
-    embeddedServer(Netty, port = settings.config.port) {
-        module(settings, dataDir)
+    val port = System.getenv("PORT")?.toIntOrNull()
+        ?: System.getProperty("PORT")?.toIntOrNull()
+        ?: error("PORT environment variable is not set. Coolify sets this automatically; for local dev, add PORT=45966 to a .env file.")
+
+    embeddedServer(Netty, port = port) {
+        module(settings, anthropicApiKey, dataDir)
     }.start(wait = true)
 }
 
 private val appLogger = LoggerFactory.getLogger("Application")
 
-fun Application.module(settings: AppSettings, dataDir: File) {
+fun Application.module(settings: AppSettings, anthropicApiKey: String, dataDir: File) {
     val itemRepo = ItemRepository(dataDir)
-    val claudeClient = ClaudeClient(settings.secrets.anthropicApiKey, dataDir)
+    val claudeClient = ClaudeClient(anthropicApiKey, dataDir)
 
     environment.monitor.subscribe(io.ktor.server.application.ApplicationStopped) {
         claudeClient.close()

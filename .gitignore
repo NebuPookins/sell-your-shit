@@ -17,7 +17,7 @@ frontend/dist/
 src/main/resources/static/
 
 # Secrets — never commit
-data/config/secrets.yaml
+.env
 
 # Data directory (local state, not versioned)
 data/items/

@@ -35,11 +35,6 @@ data class DecayConfig(
 
 @Serializable
 data class AppConfig(
-    val port: Int,
     val decay: DecayConfig
 )
 
-@Serializable
-data class SecretsConfig(
-    @SerialName("anthropic-api-key") val anthropicApiKey: String
-)
