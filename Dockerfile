@@ -5,7 +5,7 @@ COPY frontend/ ./
 RUN npm ci && npm run build
 
 # ---- Backend build stage ----
-FROM gradle:8-jdk23 AS backend-builder
+FROM gradle:8-jdk21 AS backend-builder
 WORKDIR /app
 
 # Copy dependency descriptors first for layer caching
@@ -23,12 +23,16 @@ COPY --from=frontend-builder /app/dist src/main/resources/static/
 RUN gradle installDist --no-daemon
 
 # ---- Runtime stage ----
-FROM eclipse-temurin:23-jre
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Create the data directory layout expected by the app
-RUN mkdir -p /app/data/config /app/data/items /app/data/photos /app/data/platforms
+# Static config and platform profiles (baked into the image)
+COPY config/ config/
+ENV CONFIG_DIR=/app/config
+
+# Runtime data directory — mounted as a persistent volume by Coolify
+RUN mkdir -p /app/data
 
 # Copy the installed distribution from the builder
 COPY --from=backend-builder /app/build/install/sell-your-shit/ .

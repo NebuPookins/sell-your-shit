@@ -8,15 +8,15 @@ group = "net.nebupookins.sellyourshit"
 version = "1.0-SNAPSHOT"
 
 kotlin {
-    jvmToolchain(23)
+    jvmToolchain(21)
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    sourceCompatibility = "23"
-    targetCompatibility = "23"
+    sourceCompatibility = "21"
+    targetCompatibility = "21"
 }
 
 repositories {

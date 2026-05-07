@@ -36,13 +36,13 @@ fun loadDotEnv() {
     }
 }
 
-fun loadConfigOrThrow(dataDir: File): AppSettings {
-    val configFile = dataDir.resolve("config/config.yaml")
-    val platformsDir = dataDir.resolve("platforms")
+fun loadConfigOrThrow(dir: File): AppSettings {
+    val configFile = dir.resolve("config.yaml")
+    val platformsDir = dir.resolve("platforms")
 
     check(configFile.exists()) {
         "Config file not found: ${configFile.absolutePath}. " +
-            "Create it based on data/config/config.yaml.example"
+            "Create it based on config/config.yaml.example"
     }
     check(platformsDir.isDirectory) {
         "Platforms directory not found: ${platformsDir.absolutePath}"

@@ -20,8 +20,7 @@ src/main/resources/static/
 .env
 
 # Data directory (local state, not versioned)
-data/items/
-data/photos/
+data/
 
 # OS
 .DS_Store

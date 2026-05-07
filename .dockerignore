@@ -4,8 +4,7 @@
 .idea/
 .kotlin/
 build/
-data/items/
-data/photos/
+data/
 frontend/node_modules/
 frontend/dist/
 README.md

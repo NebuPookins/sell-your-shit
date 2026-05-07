@@ -17,7 +17,8 @@ import java.io.File
 fun main() {
     val dataDir = File("data")
     loadDotEnv()
-    val settings = loadConfigOrThrow(dataDir)
+    val configDir = System.getenv().getOrDefault("CONFIG_DIR", "config").let(::File)
+    val settings = loadConfigOrThrow(configDir)
     val anthropicApiKey = loadAnthropicApiKey()
 
     val port = System.getenv("PORT")?.toIntOrNull()
