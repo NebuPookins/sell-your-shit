@@ -5,20 +5,7 @@ COPY frontend/ ./
 RUN npm ci && npm run build
 
 # ---- Backend build stage ----
-# Use the JDK matching the project's jvmToolchain(26).
-# Install Gradle on top since gradle:8-jdk26 is not published as an official tag.
-FROM eclipse-temurin:26-jdk AS backend-builder
-
-ENV GRADLE_VERSION=8.13
-
-# Install Gradle
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o gradle.zip && \
-    unzip -q gradle.zip -d /opt && \
-    rm gradle.zip && \
-    ln -s "/opt/gradle-${GRADLE_VERSION}/bin/gradle" /usr/local/bin/gradle && \
-    mkdir -p /app
-
+FROM gradle:8-jdk23 AS backend-builder
 WORKDIR /app
 
 # Copy dependency descriptors first for layer caching

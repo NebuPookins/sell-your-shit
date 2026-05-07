@@ -8,7 +8,7 @@ group = "net.nebupookins.sellyourshit"
 version = "1.0-SNAPSHOT"
 
 kotlin {
-    jvmToolchain(26)
+    jvmToolchain(23)
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23)
     }
