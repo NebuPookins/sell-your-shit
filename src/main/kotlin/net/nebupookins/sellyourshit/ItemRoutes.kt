@@ -90,6 +90,10 @@ fun Route.itemRoutes(
             call.respond(itemRepo.listItems())
         }
 
+        get("/archived") {
+            call.respond(itemRepo.listArchivedItems())
+        }
+
         route("/{id}") {
             get {
                 val id = call.parameters["id"]!!

@@ -237,6 +237,7 @@ export function Dashboard() {
         <h1 style={{ margin: 0 }}>Listing Manager</h1>
         <Link to="/items/new"><button>+ New Item</button></Link>
         <Link to="/items"><button style={{ background: 'none', border: '1px solid #888', cursor: 'pointer' }}>All Items</button></Link>
+        <Link to="/archive"><button style={{ background: 'none', border: '1px solid #888', cursor: 'pointer' }}>Archive</button></Link>
       </div>
 
       <section style={{ marginBottom: 32 }}>

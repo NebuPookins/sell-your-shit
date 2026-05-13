@@ -10,7 +10,7 @@ function autoResize(el: HTMLTextAreaElement | null) {
   el.style.height = el.scrollHeight + 'px'
 }
 
-function PhotoStrip({ item, onUpdate }: { item: Item; onUpdate: (i: Item) => void }) {
+function PhotoStrip({ item, onUpdate, readOnly }: { item: Item; onUpdate: (i: Item) => void; readOnly?: boolean }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null)
 
   async function handleDrop(targetIdx: number) {
@@ -55,26 +55,28 @@ function PhotoStrip({ item, onUpdate }: { item: Item; onUpdate: (i: Item) => voi
             style={{ width: 120, height: 120, objectFit: 'cover', display: 'block' }}
             alt={`Photo ${idx + 1}`}
           />
-          <button
-            onClick={() => deletePhoto(filename)}
-            style={{
-              position: 'absolute',
-              top: 2,
-              right: 2,
-              background: 'rgba(0,0,0,0.6)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '50%',
-              width: 22,
-              height: 22,
-              cursor: 'pointer',
-              lineHeight: '22px',
-              padding: 0,
-              fontSize: 12,
-            }}
-          >
-            ✕
-          </button>
+          {!readOnly && (
+            <button
+              onClick={() => deletePhoto(filename)}
+              style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                background: 'rgba(0,0,0,0.6)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '50%',
+                width: 22,
+                height: 22,
+                cursor: 'pointer',
+                lineHeight: '22px',
+                padding: 0,
+                fontSize: 12,
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -136,16 +138,30 @@ function FieldInput({
   isUncertain,
   onChange,
   onBlur,
+  disabled,
 }: {
   spec: FieldSpec
   value: string
   isUncertain: boolean
   onChange: (v: string) => void
   onBlur: (v: string) => void
+  disabled?: boolean
 }) {
   const base: React.CSSProperties = isUncertain
     ? { flex: 1, background: '#fffbcc', color: '#333' }
     : { flex: 1 }
+
+  if (disabled) {
+    if (spec.type === 'multiline') {
+      return <textarea value={value} style={{ ...base, minHeight: 80, resize: 'none', padding: 4, overflow: 'hidden' }} disabled />
+    }
+    if (spec.type === 'select' || spec.type === 'enum') {
+      return <select value={value} style={{ ...base }} disabled>
+        {(spec.values ?? []).map(v => <option key={v} value={v}>{v}</option>)}
+      </select>
+    }
+    return <input type={spec.type === 'number' ? 'number' : 'text'} value={value} style={{ ...base, padding: 4 }} disabled />
+  }
 
   if (spec.type === 'multiline') {
     return (
@@ -258,10 +274,12 @@ function ListingTab({
   listing,
   platform,
   onUpdate,
+  archived,
 }: {
   listing: Listing
   platform: PlatformProfile | undefined
   onUpdate: (l: Listing) => void
+  archived?: boolean
 }) {
   const [fields, setFields] = useState<Record<string, string>>(listing.generatedFields)
   const [askingPrice, setAskingPrice] = useState<number | null>(listing.askingPrice)
@@ -383,7 +401,7 @@ function ListingTab({
           {listing.status}
         </span>
         <button onClick={copyAll}>Copy All</button>
-        {listing.status === 'DRAFT' && (
+        {!archived && listing.status === 'DRAFT' && (
           <button
             onClick={() => setShowMarkPosted(true)}
             style={{ background: '#388e3c', color: '#fff', border: 'none', padding: '4px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
@@ -391,7 +409,7 @@ function ListingTab({
             Mark as Posted
           </button>
         )}
-        {(listing.status === 'ACTIVE' || listing.status === 'DRAFT') && (
+        {!archived && (listing.status === 'ACTIVE' || listing.status === 'DRAFT') && (
           <>
             <button
               onClick={async () => {
@@ -463,6 +481,7 @@ function ListingTab({
                 spec={spec}
                 value={value}
                 isUncertain={isUncertain}
+                disabled={archived}
                 onChange={v => {
                   const next = { ...fieldsRef.current, [spec.name]: v }
                   fieldsRef.current = next
@@ -487,13 +506,16 @@ function ListingTab({
           <input
             type="number"
             value={askingPrice ?? ''}
+            disabled={archived}
             style={{ width: 120, padding: 4 }}
             onChange={e => {
+              if (archived) return
               const v = e.target.value === '' ? null : Number(e.target.value)
               askingPriceRef.current = v
               setAskingPrice(v)
             }}
             onBlur={e => {
+              if (archived) return
               const v = e.target.value === '' ? null : Number(e.target.value)
               askingPriceRef.current = v
               setAskingPrice(v)
@@ -525,13 +547,16 @@ function ListingTab({
         <textarea
           ref={el => autoResize(el)}
           value={notes}
+          disabled={archived}
           style={{ width: '100%', minHeight: 60, padding: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden' }}
           onChange={e => {
+            if (archived) return
             autoResize(e.target)
             notesRef.current = e.target.value
             setNotes(e.target.value)
           }}
           onBlur={e => {
+            if (archived) return
             notesRef.current = e.target.value
             setNotes(e.target.value)
             save(fieldsRef.current, askingPriceRef.current, e.target.value, postedAtRef.current, expiresAtRef.current, externalIdRef.current)
@@ -544,13 +569,14 @@ function ListingTab({
         <input
           type="date"
           value={postedAt}
+          disabled={archived}
           style={{ padding: 4 }}
           onChange={e => { postedAtRef.current = e.target.value; setPostedAt(e.target.value) }}
-          onBlur={() => saveAll()}
+          onBlur={() => { if (!archived) saveAll() }}
         />
       </div>
 
-      <ExpiryDateInput value={expiresAt} onChange={v => { expiresAtRef.current = v; setExpiresAt(v) }} />
+      <ExpiryDateInput value={expiresAt} onChange={v => { expiresAtRef.current = v; setExpiresAt(v) }} disabled={archived} />
 
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>External URL</label>
@@ -558,10 +584,11 @@ function ListingTab({
           type="text"
           value={externalId}
           placeholder="https://…"
+          disabled={archived}
           style={{ padding: 4, width: '100%', boxSizing: 'border-box' }}
           onChange={e => { externalIdRef.current = e.target.value; setExternalId(e.target.value) }}
           onBlur={() => {
-            const url = externalIdRef.current
+            if (archived) return
             if (listing.status === 'DRAFT' && url) {
               const today = new Date().toISOString().slice(0, 10)
               const effectivePostedAt = postedAtRef.current || today
@@ -631,14 +658,22 @@ export function ItemDetail() {
       <Link to="/">← Back to list</Link>
       <h1 style={{ marginBottom: 16 }}>
         {item.rawDescription.slice(0, 80)}{item.rawDescription.length > 80 ? '…' : ''}
+        {item.archivedAt && (
+          <span style={{
+            marginLeft: 12, fontSize: 14, fontWeight: 600, color: '#555',
+            padding: '2px 10px', borderRadius: 12, background: '#e0e0e0',
+          }}>
+            Archived
+          </span>
+        )}
       </h1>
 
       <div style={{ display: 'flex', gap: 24 }}>
         {/* Photo sidebar */}
         <div style={{ width: 140, flexShrink: 0 }}>
           <h3 style={{ marginTop: 0, fontSize: 14 }}>Photos</h3>
-          <PhotoStrip item={item} onUpdate={setItem} />
-          <AddPhotos itemId={item.id} onUpdate={setItem} />
+          <PhotoStrip item={item} onUpdate={setItem} readOnly={!!item.archivedAt} />
+          {!item.archivedAt && <AddPhotos itemId={item.id} onUpdate={setItem} />}
         </div>
 
         {/* Listings */}
@@ -679,6 +714,7 @@ export function ItemDetail() {
                   key={listings[activeTab].id}
                   listing={listings[activeTab]}
                   platform={platforms.find(p => p.id === listings[activeTab].platformId)}
+                  archived={!!item.archivedAt}
                   onUpdate={updatedListing => {
                     setItem(prev =>
                       prev

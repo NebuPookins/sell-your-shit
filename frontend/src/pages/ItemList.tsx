@@ -28,6 +28,7 @@ export function ItemList() {
     <div>
       <h1>Listing Manager</h1>
       <Link to="/items/new"><button>+ New Item</button></Link>
+      <Link to="/archive"><button style={{ background: 'none', border: '1px solid #888', cursor: 'pointer', marginLeft: 8 }}>Archive</button></Link>
       {items.length === 0 ? (
         <p>No items yet.</p>
       ) : (

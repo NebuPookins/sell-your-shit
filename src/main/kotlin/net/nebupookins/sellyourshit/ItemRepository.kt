@@ -211,11 +211,26 @@ class ItemRepository(private val dataDir: File) {
                     updatedAt = now
                 )
                 val updatedListings = item.listings.toMutableList().also { it[idx] = updated }
-                saveItem(item.copy(listings = updatedListings, updatedAt = now))
+                val saved = item.copy(listings = updatedListings, updatedAt = now)
+                // Auto-archive when all non-DRAFT listings become SOLD or CANCELLED
+                if (status == ListingStatus.SOLD || status == ListingStatus.CANCELLED) {
+                    val nonDraft = updatedListings.filter { it.status != ListingStatus.DRAFT }
+                    if (nonDraft.isNotEmpty() && nonDraft.all { it.status == ListingStatus.SOLD || it.status == ListingStatus.CANCELLED }) {
+                        saveItem(saved.copy(archivedAt = now, updatedAt = now))
+                    } else {
+                        saveItem(saved)
+                    }
+                } else {
+                    saveItem(saved)
+                }
                 return updated
             }
         }
         return null
+    }
+
+    fun listArchivedItems(): List<Item> {
+        return listItems().filter { it.archivedAt != null }
     }
 
     fun renewListing(listingId: String, newPrice: Double?, dropPercent: Double, newExpiresAt: String? = null): Listing? {
@@ -286,8 +301,6 @@ class ItemRepository(private val dataDir: File) {
         val closedItems = mutableListOf<Item>()
 
         for (item in listItems()) {
-            if (item.archivedAt != null) continue
-
             val nonDraftListings = item.listings.filter { it.status != ListingStatus.DRAFT }
             if (nonDraftListings.isNotEmpty() && nonDraftListings.all {
                 it.status == ListingStatus.SOLD || it.status == ListingStatus.CANCELLED
@@ -295,6 +308,8 @@ class ItemRepository(private val dataDir: File) {
                 closedItems.add(item)
                 continue
             }
+
+            if (item.archivedAt != null) continue
 
             for (listing in item.listings) {
                 if (listing.status != ListingStatus.ACTIVE) continue

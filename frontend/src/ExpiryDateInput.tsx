@@ -6,10 +6,12 @@ export function ExpiryDateInput({
   value,
   onChange,
   label = 'Expiry date',
+  disabled,
 }: {
   value: string
   onChange: (date: string) => void
   label?: string
+  disabled?: boolean
 }) {
   const [daysValue, setDaysValue] = useState('')
 
@@ -25,6 +27,7 @@ export function ExpiryDateInput({
         <input
           type="date"
           value={value}
+          disabled={disabled}
           style={{ padding: 4 }}
           onChange={e => {
             const v = e.target.value
@@ -36,6 +39,7 @@ export function ExpiryDateInput({
           type="number"
           value={daysValue}
           placeholder="days from today"
+          disabled={disabled}
           style={{ width: 60, padding: 4 }}
           onChange={e => {
             setDaysValue(e.target.value)
