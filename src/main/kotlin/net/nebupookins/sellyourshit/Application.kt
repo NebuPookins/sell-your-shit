@@ -60,7 +60,15 @@ fun Application.module(settings: AppSettings, anthropicApiKey: String, dataDir: 
 
     routing {
         get("/api/v1/health") {
-            call.respond(mapOf("status" to "ok"))
+            val checks = listOf(
+                mapOf("name" to "disk_space", "healthy" to (dataDir.freeSpace >= 1_048_576L)),
+                mapOf("name" to "anthropic_api_key", "healthy" to anthropicApiKey.isNotBlank())
+            )
+            val allHealthy = checks.all { it["healthy"] == true }
+            call.respond(
+                if (allHealthy) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable,
+                mapOf("status" to if (allHealthy) "healthy" else "unhealthy", "checks" to checks)
+            )
         }
 
         get("/api/v1/config/platforms") {
