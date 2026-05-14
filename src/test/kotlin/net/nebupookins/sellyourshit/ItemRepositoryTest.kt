@@ -10,6 +10,7 @@ import kotlin.test.assertTrue
 import java.io.File
 import java.nio.file.Files
 import java.time.Instant
+import java.time.ZoneOffset
 
 private val PAST = "2025-01-01T00:00:00Z"
 
@@ -193,6 +194,68 @@ class ItemRepositoryTest {
 
         assertEquals(1, dashboard.renewalQueue.size, "Expired listing should appear in renewal queue")
         assertEquals("active-1", dashboard.renewalQueue[0].listingId)
+    }
+
+    @Test
+    fun `date-only expiry respects timezone offset`() {
+        val now = Instant.now().toString()
+        val farPast = "2000-01-01"
+        val farFuture = "3025-06-01"
+
+        val futureItem = Item(
+            id = "tz-future",
+            rawDescription = "Future",
+            createdAt = now,
+            updatedAt = now,
+            listings = listOf(
+                Listing(
+                    id = "future-1",
+                    platformId = "test",
+                    status = ListingStatus.ACTIVE,
+                    createdAt = now,
+                    updatedAt = now,
+                    postedAt = PAST,
+                    expiresAt = farFuture
+                )
+            )
+        )
+        val repo = createTempRepo(futureItem)
+
+        // Far-future date is never expired regardless of offset
+        var dashboard = repo.getDashboard(DecayConfig(14, 0.1), ZoneOffset.UTC)
+        assertTrue(!dashboard.activeListings[0].renewalReasons.contains("expired"), "Future date should not be expired in UTC")
+
+        dashboard = repo.getDashboard(DecayConfig(14, 0.1), ZoneOffset.ofHours(14))
+        assertTrue(!dashboard.activeListings[0].renewalReasons.contains("expired"), "Future date should not be expired in +14")
+
+        dashboard = repo.getDashboard(DecayConfig(14, 0.1), ZoneOffset.ofHours(-12))
+        assertTrue(!dashboard.activeListings[0].renewalReasons.contains("expired"), "Future date should not be expired in -12")
+
+        val pastItem = Item(
+            id = "tz-past",
+            rawDescription = "Past",
+            createdAt = now,
+            updatedAt = now,
+            listings = listOf(
+                Listing(
+                    id = "past-1",
+                    platformId = "test",
+                    status = ListingStatus.ACTIVE,
+                    createdAt = now,
+                    updatedAt = now,
+                    postedAt = PAST,
+                    expiresAt = farPast
+                )
+            )
+        )
+        val repo2 = createTempRepo(pastItem)
+
+        // Far-past date is always expired regardless of offset
+        for (hours in listOf(0, 14, -12)) {
+            dashboard = repo2.getDashboard(DecayConfig(14, 0.1), ZoneOffset.ofHours(hours))
+            assertTrue(dashboard.activeListings[0].renewalReasons.contains("expired"),
+                "Past date should be expired in offset $hours")
+        }
     }
 
     @Test

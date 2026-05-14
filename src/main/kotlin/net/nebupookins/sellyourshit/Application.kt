@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.BindException
+import java.time.ZoneOffset
 
 private val appLogger = LoggerFactory.getLogger("Application")
 
@@ -71,7 +72,8 @@ fun Application.module(settings: AppSettings, anthropicApiKey: String, dataDir: 
         }
 
         get("/api/v1/dashboard") {
-            call.respond(itemRepo.getDashboard(settings.config.decay))
+            val zoneOffset = call.request.queryParameters["tz"]?.toIntOrNull()?.let { ZoneOffset.ofTotalSeconds(it * 60) }
+            call.respond(itemRepo.getDashboard(settings.config.decay, zoneOffset))
         }
 
         itemRoutes(itemRepo, claudeClient, settings.platforms, settings.config.decay)

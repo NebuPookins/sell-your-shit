@@ -159,8 +159,9 @@ export function Dashboard() {
   const [dropPercent, setDropPercent] = useState(0.1)
 
   function load() {
+    const tz = -new Date().getTimezoneOffset()
     Promise.all([
-      fetch('/api/v1/dashboard').then(r => r.json()),
+      fetch(`/api/v1/dashboard?tz=${tz}`).then(r => r.json()),
       fetch('/api/v1/config/decay').then(r => r.json()),
     ])
       .then(([dashboardData, decayData]) => {

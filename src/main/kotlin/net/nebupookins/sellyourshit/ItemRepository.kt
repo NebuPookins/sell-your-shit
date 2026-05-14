@@ -312,7 +312,7 @@ class ItemRepository(private val dataDir: File) {
         runCatching { Instant.parse(s) }.getOrNull()
             ?: runCatching { LocalDate.parse(s).atStartOfDay(ZoneOffset.UTC).toInstant() }.getOrNull()
 
-    fun getDashboard(decayConfig: DecayConfig): DashboardResponse {
+    fun getDashboard(decayConfig: DecayConfig, zoneOffset: ZoneOffset? = null): DashboardResponse {
         val now = Instant.now()
 
         val renewalQueue = mutableListOf<DashboardEntry>()
@@ -384,7 +384,17 @@ class ItemRepository(private val dataDir: File) {
                 val expiresAtInstant = listing.expiresAt?.let { parseInstant(it) }
                 val daysActive = postedAtInstant?.let { ChronoUnit.DAYS.between(it, now).toInt() }
 
-                val isExpired = expiresAtInstant != null && expiresAtInstant.isBefore(now)
+                val isExpired = if (zoneOffset != null && listing.expiresAt != null) {
+                    val expiresLocalDate = runCatching { LocalDate.parse(listing.expiresAt) }.getOrNull()
+                    if (expiresLocalDate != null) {
+                        val todayInOffset = now.atOffset(zoneOffset).toLocalDate()
+                        expiresLocalDate.isBefore(todayInOffset)
+                    } else {
+                        expiresAtInstant != null && expiresAtInstant.isBefore(now)
+                    }
+                } else {
+                    expiresAtInstant != null && expiresAtInstant.isBefore(now)
+                }
                 val lastDecayDate = listing.priceHistory
                     .lastOrNull { it.reason == "decay" }?.date
                     ?.let { parseInstant(it) }
