@@ -155,7 +155,7 @@ function FieldInput({
     if (spec.type === 'multiline') {
       return <textarea value={value} style={{ ...base, minHeight: 80, resize: 'none', padding: 4, overflow: 'hidden' }} disabled />
     }
-    if (spec.type === 'select' || spec.type === 'enum') {
+    if (spec.type === 'enum') {
       return <select value={value} style={{ ...base }} disabled>
         {(spec.values ?? []).map(v => <option key={v} value={v}>{v}</option>)}
       </select>
@@ -589,7 +589,7 @@ function ListingTab({
           onChange={e => { externalIdRef.current = e.target.value; setExternalId(e.target.value) }}
           onBlur={() => {
             if (archived) return
-            if (listing.status === 'DRAFT' && url) {
+            if (listing.status === 'DRAFT' && externalIdRef.current) {
               const today = new Date().toISOString().slice(0, 10)
               const effectivePostedAt = postedAtRef.current || today
               const effectiveExpiresAt = expiresAtRef.current ||
@@ -603,7 +603,7 @@ function ListingTab({
                   expiresAtRef.current = effectiveExpiresAt
                   setExpiresAt(effectiveExpiresAt)
                 }
-                markPosted(effectivePostedAt, effectiveExpiresAt, url)
+                markPosted(effectivePostedAt, effectiveExpiresAt, externalIdRef.current)
               } else {
                 setShowMarkPosted(true)
               }
@@ -667,6 +667,26 @@ export function ItemDetail() {
           </span>
         )}
       </h1>
+
+      {!item.archivedAt && listings.some(l => l.status !== 'SOLD' && l.status !== 'CANCELLED') && (
+        <div style={{ marginBottom: 16 }}>
+          <button
+            onClick={async () => {
+              if (!confirm('Mark this entire item as sold? This will mark ALL listings as SOLD and archive the item.')) return
+              try {
+                const res = await fetch(`/api/v1/items/${item.id}/mark-sold`, { method: 'POST' })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                setItem(await res.json())
+              } catch (err) {
+                alert(String(err))
+              }
+            }}
+            style={{ background: '#1565c0', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 4, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+          >
+            Mark Item as Sold
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 24 }}>
         {/* Photo sidebar */}

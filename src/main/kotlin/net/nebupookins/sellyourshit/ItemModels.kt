@@ -110,5 +110,6 @@ data class MarkListingStatusRequest(
 data class DashboardResponse(
     val renewalQueue: List<DashboardEntry>,
     val activeListings: List<DashboardEntry>,
-    val closedItems: List<Item>
+    val closedItems: List<Item>,
+    val needsAction: List<DashboardEntry> = emptyList()
 )

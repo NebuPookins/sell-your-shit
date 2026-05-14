@@ -13,6 +13,9 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.net.BindException
+
+private val appLogger = LoggerFactory.getLogger("Application")
 
 fun main() {
     val dataDir = File("data")
@@ -25,12 +28,15 @@ fun main() {
         ?: System.getProperty("PORT")?.toIntOrNull()
         ?: error("PORT environment variable is not set. Coolify sets this automatically; for local dev, add PORT=45966 to a .env file.")
 
-    embeddedServer(Netty, port = port) {
-        module(settings, anthropicApiKey, dataDir)
-    }.start(wait = true)
+    try {
+        appLogger.info("Starting server on port $port")
+        embeddedServer(Netty, port = port) {
+            module(settings, anthropicApiKey, dataDir)
+        }.start(wait = true)
+    } catch (e: BindException) {
+        throw BindException("Failed to bind to port $port: ${e.message}")
+    }
 }
-
-private val appLogger = LoggerFactory.getLogger("Application")
 
 fun Application.module(settings: AppSettings, anthropicApiKey: String, dataDir: File) {
     val itemRepo = ItemRepository(dataDir)

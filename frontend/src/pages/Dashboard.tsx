@@ -151,54 +151,6 @@ function RenewModal({
   )
 }
 
-function RenewalCard({
-  entry,
-  onRenew,
-}: {
-  entry: DashboardEntry
-  onRenew: (e: DashboardEntry) => void
-}) {
-  return (
-    <div style={{ border: '1px solid #e57373', borderRadius: 8, padding: 12, width: 220 }}>
-      {entry.itemThumbnail && (
-        <img
-          src={`/photos/${entry.itemId}/${entry.itemThumbnail}`}
-          style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4, display: 'block' }}
-          alt=""
-        />
-      )}
-      <p style={{ margin: '8px 0 4px', fontWeight: 600 }}>
-        <Link to={`/items/${entry.itemId}?listing=${entry.listingId}`}>
-          {(entry.title ?? entry.itemDescription).slice(0, 50)}
-        </Link>
-      </p>
-      <p style={{ margin: '2px 0', fontSize: 13 }}>{entry.platformId}</p>
-      {entry.askingPrice != null && (
-        <p style={{ margin: '2px 0', fontSize: 13 }}>${entry.askingPrice.toFixed(2)}</p>
-      )}
-      {entry.daysActive != null && (
-        <p style={{ margin: '2px 0', fontSize: 13 }}>{entry.daysActive} days active</p>
-      )}
-      <div style={{ margin: '6px 0 0', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {entry.renewalReasons.map(r => (
-          <span key={r} style={{ fontSize: 12, color: '#c62828', fontWeight: 600 }}>
-            {RENEWAL_REASON_LABEL[r] ?? r}
-          </span>
-        ))}
-      </div>
-      <button
-        onClick={() => onRenew(entry)}
-        style={{
-          marginTop: 8, width: '100%', background: '#f57c00', color: '#fff',
-          border: 'none', padding: '6px 0', borderRadius: 4, cursor: 'pointer', fontSize: 13,
-        }}
-      >
-        Renew
-      </button>
-    </div>
-  )
-}
-
 export function Dashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -240,18 +192,75 @@ export function Dashboard() {
         <Link to="/archive"><button style={{ background: 'none', border: '1px solid #888', cursor: 'pointer' }}>Archive</button></Link>
       </div>
 
-      <section style={{ marginBottom: 32 }}>
-        <h2 style={{ marginTop: 0 }}>Renewal Queue ({data.renewalQueue.length})</h2>
-        {data.renewalQueue.length === 0 ? (
-          <p style={{ color: '#555' }}>No listings need attention.</p>
-        ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {data.renewalQueue.map(entry => (
-              <RenewalCard key={entry.listingId} entry={entry} onRenew={setRenewEntry} />
-            ))}
-          </div>
-        )}
-      </section>
+      {(() => {
+        const needsActionItems = [
+          ...data.needsAction.map(e => ({ ...e, _action: 'needs-sold' as const })),
+          ...data.renewalQueue.map(e => ({ ...e, _action: 'renewal' as const })),
+        ].sort((a, b) => {
+          if (a._action !== b._action) return a._action === 'needs-sold' ? -1 : 1
+          return (a.expiresAt ?? '').localeCompare(b.expiresAt ?? '')
+        })
+
+        return needsActionItems.length > 0 ? (
+          <section style={{ marginBottom: 32 }}>
+            <h2 style={{ marginTop: 0, color: '#c62828' }}>
+              Needs Action ({needsActionItems.length})
+            </h2>
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '2px solid #e57373' }}>
+                  <th style={{ padding: '4px 8px' }}>Photo</th>
+                  <th style={{ padding: '4px 8px' }}>Title</th>
+                  <th style={{ padding: '4px 8px' }}>Platform</th>
+                  <th style={{ padding: '4px 8px' }}>Price</th>
+                  <th style={{ padding: '4px 8px' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {needsActionItems.map(entry => (
+                  <tr key={entry.listingId} style={{ borderBottom: '1px solid #ffcdd2' }}>
+                    <td style={{ padding: '4px 8px' }}>
+                      {entry.itemThumbnail ? (
+                        <img src={`/photos/${entry.itemId}/${entry.itemThumbnail}`}
+                          style={{ width: 48, height: 48, objectFit: 'cover', display: 'block' }} alt="" />
+                      ) : <span style={{ color: '#aaa' }}>—</span>}
+                    </td>
+                    <td style={{ padding: '4px 8px' }}>
+                      <Link to={`/items/${entry.itemId}`}>
+                        {(entry.title ?? entry.itemDescription).slice(0, 60)}
+                      </Link>
+                    </td>
+                    <td style={{ padding: '4px 8px' }}>{entry.platformId}</td>
+                    <td style={{ padding: '4px 8px' }}>
+                      {entry.askingPrice != null ? `$${entry.askingPrice.toFixed(2)}` : '—'}
+                    </td>
+                    <td style={{ padding: '4px 8px' }}>
+                      {entry._action === 'needs-sold' ? (
+                        <span style={{ color: '#c62828', fontWeight: 600, fontSize: 13 }}>needs sold</span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {entry.renewalReasons.map(r => (
+                            <span key={r} style={{ fontSize: 12, color: '#c62828', fontWeight: 600 }}>
+                              {RENEWAL_REASON_LABEL[r] ?? r}
+                            </span>
+                          ))}
+                          <button onClick={() => setRenewEntry(entry)}
+                            style={{
+                              background: '#f57c00', color: '#fff', border: 'none',
+                              padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+                            }}>
+                            Renew
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ) : null
+      })()}
 
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ marginTop: 0 }}>All Active Listings ({data.activeListings.length})</h2>

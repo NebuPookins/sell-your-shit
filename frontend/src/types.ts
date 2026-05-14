@@ -65,4 +65,5 @@ export interface DashboardResponse {
   renewalQueue: DashboardEntry[]
   activeListings: DashboardEntry[]
   closedItems: Item[]
+  needsAction: DashboardEntry[]
 }

@@ -117,6 +117,13 @@ fun Route.itemRoutes(
                 else call.respond(item)
             }
 
+            post("/mark-sold") {
+                val id = call.parameters["id"]!!
+                val item = itemRepo.markItemAsSold(id)
+                if (item == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Item not found"))
+                else call.respond(item)
+            }
+
             post("/generate") {
                 val id = call.parameters["id"]!!
                 val item = itemRepo.getItem(id)

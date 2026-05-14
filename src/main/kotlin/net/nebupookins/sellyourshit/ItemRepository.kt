@@ -200,6 +200,25 @@ class ItemRepository(private val dataDir: File) {
         return null
     }
 
+    fun markItemAsSold(itemId: String): Item? {
+        val item = getItem(itemId) ?: return null
+        val now = Instant.now().toString()
+        val updatedListings = item.listings.map { listing ->
+            if (listing.status != ListingStatus.SOLD && listing.status != ListingStatus.CANCELLED) {
+                listing.copy(status = ListingStatus.SOLD, updatedAt = now)
+            } else {
+                listing
+            }
+        }
+        val updated = item.copy(
+            listings = updatedListings,
+            archivedAt = now,
+            updatedAt = now
+        )
+        saveItem(updated)
+        return updated
+    }
+
     fun markListingStatus(listingId: String, status: ListingStatus): Listing? {
         val items = listItems()
         for (item in items) {
@@ -299,6 +318,7 @@ class ItemRepository(private val dataDir: File) {
         val renewalQueue = mutableListOf<DashboardEntry>()
         val activeListings = mutableListOf<DashboardEntry>()
         val closedItems = mutableListOf<Item>()
+        val needsAction = mutableListOf<DashboardEntry>()
 
         for (item in listItems()) {
             val nonDraftListings = item.listings.filter { it.status != ListingStatus.DRAFT }
@@ -311,8 +331,54 @@ class ItemRepository(private val dataDir: File) {
 
             if (item.archivedAt != null) continue
 
+            val hasAnySold = nonDraftListings.any { it.status == ListingStatus.SOLD }
+
             for (listing in item.listings) {
-                if (listing.status != ListingStatus.ACTIVE) continue
+                if (listing.status != ListingStatus.ACTIVE) {
+                    if (hasAnySold && listing.status != ListingStatus.SOLD && listing.status != ListingStatus.CANCELLED) {
+                        val postedAtInstant = listing.postedAt?.let { parseInstant(it) }
+                        val daysActive = postedAtInstant?.let { ChronoUnit.DAYS.between(it, now).toInt() }
+                        needsAction.add(
+                            DashboardEntry(
+                                itemId = item.id,
+                                itemDescription = item.rawDescription,
+                                itemThumbnail = item.photos.firstOrNull(),
+                                listingId = listing.id,
+                                platformId = listing.platformId,
+                                title = listing.generatedFields["title"] ?: item.rawDescription.take(60),
+                                askingPrice = listing.askingPrice,
+                                postedAt = listing.postedAt,
+                                expiresAt = listing.expiresAt,
+                                daysActive = daysActive,
+                                externalId = listing.externalId
+                            )
+                        )
+                    }
+                    continue
+                }
+
+                // If any listing on this item is already sold, don't show renewal/decay
+                // prompts — the user just needs to close out the remaining listings.
+                if (hasAnySold) {
+                    val postedAtInstant = listing.postedAt?.let { parseInstant(it) }
+                    val daysActive = postedAtInstant?.let { ChronoUnit.DAYS.between(it, now).toInt() }
+                    val entry = DashboardEntry(
+                        itemId = item.id,
+                        itemDescription = item.rawDescription,
+                        itemThumbnail = item.photos.firstOrNull(),
+                        listingId = listing.id,
+                        platformId = listing.platformId,
+                        title = listing.generatedFields["title"] ?: item.rawDescription.take(60),
+                        askingPrice = listing.askingPrice,
+                        postedAt = listing.postedAt,
+                        expiresAt = listing.expiresAt,
+                        daysActive = daysActive,
+                        externalId = listing.externalId
+                    )
+                    activeListings.add(entry)
+                    needsAction.add(entry)
+                    continue
+                }
 
                 val postedAtInstant = listing.postedAt?.let { parseInstant(it) }
                 val expiresAtInstant = listing.expiresAt?.let { parseInstant(it) }
@@ -359,7 +425,8 @@ class ItemRepository(private val dataDir: File) {
         return DashboardResponse(
             renewalQueue = renewalQueue,
             activeListings = activeListings.sortedWith(compareBy(nullsLast()) { it.expiresAt }),
-            closedItems = closedItems
+            closedItems = closedItems,
+            needsAction = needsAction
         )
     }
 
