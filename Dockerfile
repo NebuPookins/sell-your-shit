@@ -25,9 +25,6 @@ RUN gradle installDist --no-daemon
 # ---- Runtime stage ----
 FROM eclipse-temurin:21-jre
 
-# Install curl for Coolify healthchecks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 # Static config and platform profiles (baked into the image)

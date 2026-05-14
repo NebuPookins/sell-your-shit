@@ -10,6 +10,7 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -17,6 +18,12 @@ import java.net.BindException
 import java.time.ZoneOffset
 
 private val appLogger = LoggerFactory.getLogger("Application")
+
+@Serializable
+data class HealthCheck(val name: String, val healthy: Boolean)
+
+@Serializable
+data class HealthResponse(val status: String, val checks: List<HealthCheck>)
 
 fun main() {
     val dataDir = File("data")
@@ -61,13 +68,17 @@ fun Application.module(settings: AppSettings, anthropicApiKey: String, dataDir: 
     routing {
         get("/api/v1/health") {
             val checks = listOf(
-                mapOf("name" to "disk_space", "healthy" to (dataDir.freeSpace >= 1_048_576L)),
-                mapOf("name" to "anthropic_api_key", "healthy" to anthropicApiKey.isNotBlank())
+                HealthCheck("disk_space", dataDir.freeSpace >= 1_048_576L),
+                HealthCheck("anthropic_api_key", anthropicApiKey.isNotBlank())
             )
-            val allHealthy = checks.all { it["healthy"] == true }
+            val allHealthy = checks.all { it.healthy }
+            val response = HealthResponse(
+                if (allHealthy) "healthy" else "unhealthy",
+                checks
+            )
             call.respond(
                 if (allHealthy) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable,
-                mapOf("status" to if (allHealthy) "healthy" else "unhealthy", "checks" to checks)
+                response
             )
         }
 
