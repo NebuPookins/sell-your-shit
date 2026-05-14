@@ -7,3 +7,10 @@ items which needs the user's intervention. These include:
 
 Note that if we need to mark an item as sold, then that obviates the need to
 renew an expired listing or reduce its price.
+
+---
+
+When a item needs action due to "Needs sold", it's always for a specific
+platform (e.g. Facebook), so when I click on the corresponding link for that
+action, it should open up the item with that platform's tab focused, instead
+of just opening on the generic item page.

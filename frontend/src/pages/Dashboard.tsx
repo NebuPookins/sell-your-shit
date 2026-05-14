@@ -226,7 +226,7 @@ export function Dashboard() {
                       ) : <span style={{ color: '#aaa' }}>—</span>}
                     </td>
                     <td style={{ padding: '4px 8px' }}>
-                      <Link to={`/items/${entry.itemId}`}>
+                      <Link to={`/items/${entry.itemId}${entry._action === 'needs-sold' ? `?listing=${entry.listingId}` : ''}`}>
                         {(entry.title ?? entry.itemDescription).slice(0, 60)}
                       </Link>
                     </td>
