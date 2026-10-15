@@ -28,7 +28,14 @@ private data class ClaudeContent(val type: String, val text: String? = null)
 private data class ClaudeResponse(val content: List<ClaudeContent>)
 
 
-class ClaudeClient(private val apiKey: String, private val dataDir: File) {
+// Anthropic has no "-latest" alias for current models; the undated ID is the stable alias for this family.
+const val DEFAULT_MODEL = "claude-sonnet-5-5"
+
+class ClaudeClient(
+    private val apiKey: String,
+    private val dataDir: File,
+    private val model: String = DEFAULT_MODEL,
+) {
     private val logger = LoggerFactory.getLogger(ClaudeClient::class.java)
     private val httpClient = HttpClient(CIO) {
         install(HttpTimeout) {
@@ -104,7 +111,7 @@ Rules:
         }
 
         val requestBody = buildJsonObject {
-            put("model", "claude-sonnet-4-20250514")
+            put("model", model)
             put("max_tokens", 4096)
             put("system", systemPrompt)
             put("messages", buildJsonArray {
@@ -115,7 +122,7 @@ Rules:
             })
         }
 
-        logger.info("Calling Claude API: model=claude-sonnet-4-20250514, platforms=${platforms.map { it.id }}, photos=${item.photos.size}")
+        logger.info("Calling Claude API: model=$model, platforms=${platforms.map { it.id }}, photos=${item.photos.size}")
         val response = httpClient.post("https://api.anthropic.com/v1/messages") {
             headers {
                 append("x-api-key", apiKey)
