@@ -46,6 +46,9 @@ class ItemRepository(private val dataDir: File) {
     }
 
     fun getItem(id: String): Item? {
+        // Ids arrive from URL path parameters, which Ktor percent-decodes (so "%2F"
+        // becomes "/"); refuse anything that could resolve outside itemsDir.
+        if (!isPlainFileName(id)) return null
         val file = File(itemsDir, "$id.yaml")
         if (!file.exists()) return null
         return try {
@@ -82,8 +85,8 @@ class ItemRepository(private val dataDir: File) {
         val filename = "${UUID.randomUUID()}.jpg"
         File(photosDir, "$itemId/original").also { it.mkdirs() }
         File(photosDir, "$itemId/resized").also { it.mkdirs() }
-        File(photosDir, "$itemId/original/$filename").writeBytes(bytes)
-        File(photosDir, "$itemId/resized/$filename").writeBytes(processImage(bytes))
+        photoFile(itemId, "original", filename).writeBytes(bytes)
+        photoFile(itemId, "resized", filename).writeBytes(processImage(bytes))
         val updated = item.copy(
             photos = item.photos + filename,
             updatedAt = Instant.now().toString()
@@ -94,8 +97,10 @@ class ItemRepository(private val dataDir: File) {
 
     fun deletePhoto(itemId: String, filename: String): Item? {
         val item = getItem(itemId) ?: return null
-        File(photosDir, "$itemId/original/$filename").delete()
-        File(photosDir, "$itemId/resized/$filename").delete()
+        // Only touch files the item actually owns; `filename` is untrusted input.
+        if (filename !in item.photos) return item
+        photoFile(itemId, "original", filename).delete()
+        photoFile(itemId, "resized", filename).delete()
         val updated = item.copy(
             photos = item.photos.filter { it != filename },
             updatedAt = Instant.now().toString()
@@ -440,8 +445,18 @@ class ItemRepository(private val dataDir: File) {
         )
     }
 
-    fun getResizedPhotoFile(itemId: String, filename: String): File =
-        File(photosDir, "$itemId/resized/$filename")
+    /** Returns the resized copy of [filename] only if it is one of the item's own photos. */
+    fun getResizedPhotoFile(itemId: String, filename: String): File? =
+        getItem(itemId)
+            ?.takeIf { filename in it.photos }
+            ?.let { photoFile(itemId, "resized", filename) }
+
+    private fun photoFile(itemId: String, variant: String, filename: String): File =
+        File(photosDir, "$itemId/$variant/$filename")
+
+    private fun isPlainFileName(name: String): Boolean =
+        name.isNotEmpty() && name != "." && name != ".." &&
+            name.none { it == '/' || it == '\\' || it == '\u0000' }
 
     fun saveItem(item: Item) {
         val yaml = Yaml.default.encodeToString(Item.serializer(), item)

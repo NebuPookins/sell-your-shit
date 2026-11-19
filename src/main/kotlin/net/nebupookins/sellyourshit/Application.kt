@@ -101,7 +101,7 @@ fun Application.module(settings: AppSettings, anthropicApiKey: String, dataDir: 
             val itemId = call.parameters["itemId"]!!
             val filename = call.parameters["filename"]!!
             val file = itemRepo.getResizedPhotoFile(itemId, filename)
-            if (!file.exists()) {
+            if (file == null || !file.exists()) {
                 call.respond(HttpStatusCode.NotFound)
                 return@get
             }
